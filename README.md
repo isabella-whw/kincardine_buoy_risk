@@ -59,4 +59,4 @@ Returns historical predictions within a specified date range:
 /predictions?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
 
 
-# For detailed methodology, see [METHODS.md](METHODS.md).
+## For detailed methodology, see [METHODS.md](METHODS.md).
