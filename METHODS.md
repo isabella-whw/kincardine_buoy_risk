@@ -22,16 +22,16 @@ All timestamps are parsed as UTC and converted to Toronto local time for storage
 
 
 
-# 2. Feature Engineering
+## 2. Feature Engineering
 
-## 2.1 Timestamp Construction
+### 2.1 Timestamp Construction
 
 UTC timestamps are constructed from buoy YY, MM, DD, hh, and mm fields.
 
 Local Toronto time is computed for logging and database storage.
 
 
-## 2.2 Directional Encoding
+### 2.2 Directional Encoding
 
 Wave and wind directions are transformed into sine and cosine components:
 
@@ -44,7 +44,7 @@ Predicted sin/cos components are later reconstructed into directional angles usi
   θ = arctan2(sin, cos)
 
 
-## 2.3 Onshore Direction Transformation
+### 2.3 Onshore Direction Transformation
 
 To quantify onshore forcing, wave and wind directions are transformed relative to a fixed shoreline reference angle:
 
@@ -58,7 +58,7 @@ Smaller values indicate stronger onshore forcing.
 
 
 
-# 3. Machine Learning Prediction
+## 3. Machine Learning Prediction
 
 Five trained models are applied:
 
@@ -76,7 +76,7 @@ Each hourly execution produces predicted nearshore conditions.
 
 
 
-# 4. Hazard Risk Scoring
+## 4. Hazard Risk Scoring
 
 Predicted environmental conditions are converted into a quantitative hazard score using a rule-based scoring system.
 
@@ -89,21 +89,21 @@ The following variables are used:
 - Wind direction relative to onshore (degrees)
 
 
-## 4.1 Wave Height Contribution
+### 4.1 Wave Height Contribution
 
 Wave height contributes increasing hazard points as magnitude increases.
 
 Larger waves correspond to greater nearshore energy and increased rip current likelihood.
 
 
-## 4.2 Wave Period Contribution
+### 4.2 Wave Period Contribution
 
 Longer wave periods increase hazard contribution due to higher wave energy and enhanced nearshore circulation.
 
 Short-period waves contribute less to total hazard.
 
 
-## 4.3 Wind Contribution
+### 4.3 Wind Contribution
 
 Wind contribution depends on:
 
@@ -116,7 +116,7 @@ Offshore winds reduce hazard contribution.
 
 
 
-## 4.4 Total Hazard Score
+### 4.4 Total Hazard Score
 
 The total hazard score is computed as:
 
@@ -132,7 +132,7 @@ These thresholds are selected to provide stable, interpretable public-facing haz
 
 
 
-# 5. Automation and Monitoring
+## 5. Automation and Monitoring
 
 The system runs automatically every hour using Google Cloud Scheduler.
 
