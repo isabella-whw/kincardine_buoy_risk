@@ -138,7 +138,7 @@ The system runs automatically every hour using Google Cloud Scheduler.
 
 Each prediction is stored in Firestore under:
   
-  predictions/{station\_id}/history
+  predictions/45008/history
 
 Two automated alert mechanisms are implemented:
 
