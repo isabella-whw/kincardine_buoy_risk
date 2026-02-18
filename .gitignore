@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+
+# Model files
+pickle/
+*.pkl
+
+# Environment files
+.env
+
+# VSCode
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
