@@ -5,7 +5,7 @@ The system retrieves real-time offshore buoy observations from NOAA NDBC Station
 The system is deployed using Google Cloud Run and is automatically triggered hourly via Cloud Scheduler.
 
 
-# System Overview
+## System Overview
 
 The operational pipeline performs the following steps:
 1. Fetch real-time NOAA offshore buoy data
@@ -24,7 +24,7 @@ The operational pipeline performs the following steps:
    - Stale buoy data
 
 
-# Repository Structure
+## Repository Structure
 
 - api.py — FastAPI application and endpoints
 - pipeline.py — Core prediction and scoring workflow
@@ -38,7 +38,7 @@ The operational pipeline performs the following steps:
 - requirements.txt — Python dependencies
 
 
-# Deployment Architecture
+## Deployment Architecture
 
 - Google Cloud Run: Serverless API deployment
 - Firestore database: Prediction storage
@@ -46,7 +46,7 @@ The operational pipeline performs the following steps:
 - SMTP email alert integration: Email alert notifications
 
 
-# API Endpoints
+## API Endpoints
 1. POST /run_once
    - Triggers one prediction cycle manually.
      
