@@ -143,7 +143,7 @@ Each prediction is stored in Firestore under:
 Two automated alert mechanisms are implemented:
 
 1. Stale Data Alert
-   Triggered when buoy observations exceed a defined age threshold.
+  Triggered when buoy observations exceed a defined age threshold.
 
 2. System Failure Alert  
   Triggered when the prediction pipeline raises an exception.
