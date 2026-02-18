@@ -3,7 +3,7 @@
 This document describes the data processing, machine learning prediction, and hazard scoring methodology implemented in this repository.
 
 
-# 1. Data Source
+## 1. Data Source
 
 Real-time offshore buoy observations are retrieved from NOAA NDBC Station 45008:
 
