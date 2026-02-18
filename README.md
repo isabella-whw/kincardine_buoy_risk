@@ -38,9 +38,25 @@ The operational pipeline performs the following steps:
 - requirements.txt — Python dependencies
 
 
-# Deployment
+# Deployment Architecture
 
-- Google Cloud Run
-- Firestore database
-- Cloud Scheduler (hourly trigger)
-- SMTP email alert integration
+- Google Cloud Run: Serverless API deployment
+- Firestore database: Prediction storage
+- Cloud Scheduler: Hourly automated execution
+- SMTP email alert integration: Email alert notifications
+
+
+# API Endpoints
+- POST /run_once
+Triggers one prediction cycle manually.
+
+- GET /latest
+Returns the most recent prediction stored in Firestore.
+
+- GET /predictions
+Returns historical predictions within a specified date range:
+
+/predictions?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+
+
+For detailed methodology, see [METHODS.md](METHODS.md).
