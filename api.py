@@ -1,3 +1,7 @@
+# api.py
+# FastAPI interface for the Kincardine buoy hazard prediction system.
+# Provides endpoints to run predictions and retrieve stored results.
+
 from fastapi import FastAPI, HTTPException, Query
 from datetime import datetime, date
 from zoneinfo import ZoneInfo
@@ -8,14 +12,17 @@ from firestore import write_latest, read_latest, date_to_range_strings, read_his
 from email_alert import should_send_alert, send_email_smtp
 from helper import now_toronto_str
 
+# Create and configure the FastAPI application instance.
 def build_app() -> FastAPI:
     app = FastAPI(title="Kincardine Buoy Prediction API", version="1.0")
     app.state.LAST_DOC = None
 
+    # Basic health check to confirm the service is running.
     @app.get("/health", include_in_schema=False)
     def health():
         return {"ok": True}
 
+    # Execute the full prediction pipeline once.
     @app.post("/run_once", include_in_schema=False)
     def run_once():
         try:
@@ -43,6 +50,7 @@ def build_app() -> FastAPI:
 
             raise HTTPException(status_code=500, detail=str(e))
 
+    # Return the most recent stored prediction for the configured station.
     @app.get("/latest")
     def latest():
         doc = read_latest(STATION_ID_DEFAULT, app.state.LAST_DOC)
@@ -50,6 +58,7 @@ def build_app() -> FastAPI:
             raise HTTPException(status_code=404, detail="No prediction stored yet")
         return doc
 
+    # Return stored prediction history within a Toronto-local date range.
     @app.get("/predictions")
     def predictions(
         startDate: date = Query(..., description="YYYY-MM-DD (required, Toronto local date)"),

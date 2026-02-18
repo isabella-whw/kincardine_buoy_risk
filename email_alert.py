@@ -1,3 +1,7 @@
+# email_alert.py
+# Handles email notifications and alert throttling logic.
+# Sends failure/stale alerts and prevents repeated email spam.
+
 import smtplib
 from email.message import EmailMessage
 from datetime import datetime, timezone
@@ -11,6 +15,7 @@ from config import (
 from helper import now_toronto_str
 from firestore import get_db
 
+# Send an email using configured SMTP settings.
 def send_email_smtp(subject: str, body: str) -> None:
     missing = []
     if not ALERT_EMAIL_TO: missing.append("ALERT_EMAIL_TO")
@@ -33,10 +38,12 @@ def send_email_smtp(subject: str, body: str) -> None:
         server.login(SMTP_RELAY_USERNAME, SMTP_RELAY_PASSWORD)
         server.send_message(msg)
 
+# Determine whether an alert should be sent (throttled).
 def should_send_alert(alert_key: str, last_doc_mem: dict | None) -> tuple[bool, dict | None]:
     throttle_seconds = ALERT_THROTTLE_MINUTES * 60
     mem_key = f"_last_alert_{alert_key}"
-
+    
+    # In-memory throttling
     if not USE_FIRESTORE:
         last = (last_doc_mem or {}).get(mem_key)
         if last:
@@ -56,6 +63,7 @@ def should_send_alert(alert_key: str, last_doc_mem: dict | None) -> tuple[bool, 
     if db is None:
         return True, last_doc_mem
 
+    # Firestore-based throttling
     doc_ref = db.collection("alerts").document(f"{STATION_ID_DEFAULT}_{alert_key}")
     snap = doc_ref.get()
     if snap.exists:
@@ -71,6 +79,7 @@ def should_send_alert(alert_key: str, last_doc_mem: dict | None) -> tuple[bool, 
             except Exception:
                 pass
 
+    # Update alert timestamp
     doc_ref.set(
         {
             "station_id": STATION_ID_DEFAULT,

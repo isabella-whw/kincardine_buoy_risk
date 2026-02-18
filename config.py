@@ -1,16 +1,30 @@
+# config.py
+# Central configuration for the hazard prediction system.
+# Defines environment variables, model file mappings, and alert settings.
+
 import os
 import logging
 from zoneinfo import ZoneInfo
 
+# Use uvicorn logger so logs appear in Cloud Run output
 logger = logging.getLogger("uvicorn.error")
 
+# Default buoy station ID
 STATION_ID_DEFAULT = os.getenv("STATION_ID", "41049")
+
+# Directory containing trained ML model pickle files
 PICKLE_DIR = os.getenv("PICKLE_DIR", "./pickle")
+
+# Toggle Firestore usage
 USE_FIRESTORE = os.getenv("USE_FIRESTORE", "true").lower() == "true"
 
+# Timezone configuration
 TORONTO_TZ = ZoneInfo("America/Toronto")
+
+# Reference shoreline orientation (degrees)
 ONSHORE_DEG = float(os.getenv("ONSHORE_DEG", "315"))
 
+# Mapping of prediction output names to corresponding model filenames
 MODEL_FILES = {
     "wave_height_m": "WaveHeight.pkl",
     "wave_period_s": "WavePeriod.pkl",
@@ -19,19 +33,25 @@ MODEL_FILES = {
     "wind_dir_deg": "WindDirection.pkl",
 }
 
+# Default feature list expected by trained ML models
 DEFAULT_PREDICTORS = [
     "hour_decimal", "WDIRs", "WDIRc", "WSPD", "GST", "WVHT", "DPD",
     "APD", "MWDs", "MWDc", "PRES", "ATMP", "WTMP", "DEWP"
 ]
 
-# Email alerts
+
+# Email recipient and sender
 ALERT_EMAIL_TO = os.getenv("ALERT_EMAIL_TO", "")
 ALERT_EMAIL_FROM = os.getenv("ALERT_EMAIL_FROM", "")
 
+# SMTP relay configuration for sending alert emails
 SMTP_RELAY_HOST = os.getenv("SMTP_RELAY_HOST", "smtp-relay.gmail.com")
 SMTP_RELAY_PORT = int(os.getenv("SMTP_RELAY_PORT", "587"))
 SMTP_RELAY_USERNAME = os.getenv("SMTP_RELAY_USERNAME", "")
 SMTP_RELAY_PASSWORD = os.getenv("SMTP_RELAY_PASSWORD", "")
 
+# Time threshold (minutes) to consider buoy data stale
 ALERT_STALE_MINUTES = int(os.getenv("ALERT_STALE_MINUTES", "90"))
+
+# Minimum interval (minutes) between repeated alert emails
 ALERT_THROTTLE_MINUTES = int(os.getenv("ALERT_THROTTLE_MINUTES", "60"))
