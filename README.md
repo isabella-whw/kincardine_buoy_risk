@@ -49,7 +49,7 @@ The operational pipeline performs the following steps:
 # API Endpoints
 1. POST /run_once
    - Triggers one prediction cycle manually.
-   - 
+     
 2. GET /latest
    - Returns the most recent prediction stored in Firestore.
 
