@@ -10,12 +10,16 @@ from datetime import datetime, timezone
 from config import (
     STATION_ID_DEFAULT, PICKLE_DIR, MODEL_FILES,
     TORONTO_TZ, ONSHORE_DEG,
-    ALERT_STALE_MINUTES, logger
+    ALERT_STALE_MINUTES, logger,
+    TOBERMORY_STATION_ID,
+    TOBERMORY_NORMAL_LEVEL_M,
+    TOBERMORY_LOOKBACK_HOURS,
 )
 from helper import fmt, now_toronto_str, circ_diff_deg, load_model, predict_from_bundle, predict_scalar_model, safe_del
 from risk_predict import pred_haz
 from noaa import fetch_ndbc_latest_df, build_datetime_utc, add_month_hour_decimal, ensure_dir_sin_cos 
 from email_alert import send_email_smtp, should_send_alert
+from tobermory import last_completed_hour_tobermory_min
 
 # Run one end-to-end prediction cycle and return output document.
 def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, dict | None]:
@@ -58,6 +62,22 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
             preds[out_col] = predict_scalar_model(model, df)
         safe_del(model)
 
+    # Tobermory water level
+    try:
+        water_level_min_m = last_completed_hour_tobermory_min(
+            TOBERMORY_STATION_ID,
+            lookback_hours=TOBERMORY_LOOKBACK_HOURS,
+        )
+
+        lake_level_delta_in = (
+            water_level_min_m - TOBERMORY_NORMAL_LEVEL_M
+        ) / 0.0254
+
+    except Exception:
+        logger.exception("Tobermory fetch failed; lake factor set to 0")
+        water_level_min_m = None
+        lake_level_delta_in = None
+
     # Prepare inputs for hazard scoring
     haz_in = pd.DataFrame([{
         "wave_height_m": preds["wave_height_m"],
@@ -65,6 +85,7 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
         "wave_period_s": preds["wave_period_s"],
         "wind_speed_ms": preds["wind_speed_ms"],
         "wind_dir_deg": preds["wind_dir_deg"],
+        "lake_level_delta_in": lake_level_delta_in,
     }])
     haz_in["wave_dir_deg"] = np.abs(circ_diff_deg(ONSHORE_DEG, haz_in["wave_dir_deg"]))
     haz_in["wind_dir_deg"] = np.abs(circ_diff_deg(ONSHORE_DEG, haz_in["wind_dir_deg"]))
@@ -93,5 +114,8 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
         "wind_factor": float(haz_out["wind_factor"]),
         "total_score": float(haz_out["total_score"]),
         "risk_level": str(haz_out["risk_level"]),
+        "tobermory_m": (float(water_level_min_m) if water_level_min_m is not None else None),
+        "tobermory_in": (float(lake_level_delta_in) if lake_level_delta_in is not None else None),
+        "lake_level_factor": float(haz_out.get("lake_level_factor", 0.0)),
     }
     return doc, last_doc_mem

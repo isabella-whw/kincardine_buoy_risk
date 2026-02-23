@@ -55,3 +55,12 @@ ALERT_STALE_MINUTES = int(os.getenv("ALERT_STALE_MINUTES", "90"))
 
 # Minimum interval (minutes) between repeated alert emails
 ALERT_THROTTLE_MINUTES = int(os.getenv("ALERT_THROTTLE_MINUTES", "60"))
+
+# Tobermory water level config
+TOBERMORY_STATION_ID = os.getenv("TOBERMORY_STATION_ID", "5cebf1e43d0f4a073c4bc39d")
+
+# Normal lake level baseline (meters)
+TOBERMORY_NORMAL_LEVEL_M = float(os.getenv("TOBERMORY_NORMAL_LEVEL_M", "0"))
+
+# Hours of history to request (must be >= 2)
+TOBERMORY_LOOKBACK_HOURS = int(os.getenv("TOBERMORY_LOOKBACK_HOURS", "2"))

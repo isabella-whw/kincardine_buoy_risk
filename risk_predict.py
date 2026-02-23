@@ -95,11 +95,29 @@ def pred_haz(df):
         )
     out["wind_factor"] = wind_factor
 
+    # lake level factor
+    if "lake_level_delta_in" in df.columns:
+        d = df["lake_level_delta_in"].astype(float)
+
+        out["lake_level_factor"] = np.select(
+            [
+                d > 3.0,
+                (d >= -6.0) & (d <= 3.0),
+                (d >= -11.0) & (d < -6.0),
+                d < -11.0,
+            ],
+            [-0.5, 0.0, 1.0, 2.0],
+            default=0.0,
+        ).astype(float)
+    else:
+        out["lake_level_factor"] = 0.0
+
     #Make a prediction based on the factor summation
     out["total_score"] = (
         out["wave_factor"]
         + out["period_factor"]
         + out["wind_factor"]
+        + out["lake_level_factor"]
     )
 
     out["risk_level"] = np.where(
