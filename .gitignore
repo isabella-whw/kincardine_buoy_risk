@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 
 # Model files
+prediction/pickle/
 *.pkl
 
 # Environment files
