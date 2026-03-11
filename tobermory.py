@@ -30,10 +30,7 @@ def fetch_tobermory_df(station_id: str, start_utc: datetime, end_utc: datetime):
     return df[["water_level_m"]]
 
 
-def last_completed_hour_tobermory_min(
-    station_id: str,
-    lookback_hours: int = 2,
-):
+def last_completed_hour_tobermory_min(station_id: str, lookback_hours: int = 2):
     now = datetime.now(timezone.utc)
     start = now - timedelta(hours=lookback_hours)
 

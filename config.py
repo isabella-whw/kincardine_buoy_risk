@@ -13,7 +13,7 @@ logger = logging.getLogger("uvicorn.error")
 STATION_ID_DEFAULT = os.getenv("STATION_ID", "41049")
 
 # Directory containing trained ML model pickle files
-PICKLE_DIR = os.getenv("PICKLE_DIR", "./pickle")
+PICKLE_DIR = os.path.join(".", "prediction", "pickle")
 
 # Toggle Firestore usage
 USE_FIRESTORE = os.getenv("USE_FIRESTORE", "true").lower() == "true"
@@ -64,3 +64,13 @@ TOBERMORY_NORMAL_LEVEL_M = float(os.getenv("TOBERMORY_NORMAL_LEVEL_M", "0"))
 
 # Hours of history to request (must be >= 2)
 TOBERMORY_LOOKBACK_HOURS = int(os.getenv("TOBERMORY_LOOKBACK_HOURS", "2"))
+
+# SwimSmart / Digi Remote Manager config
+SWIMSMART_ENABLED = os.getenv("SWIMSMART_ENABLED", "false").lower() == "true"
+DIGI_URL = os.getenv("DIGI_URL", "https://remotemanager.digi.com/ws/sci/")
+DIGI_USERNAME = os.getenv("DIGI_USERNAME", "")
+DIGI_PASSWORD = os.getenv("DIGI_PASSWORD", "")
+DIGI_ACTOR = os.getenv("DIGI_ACTOR", "")
+DIGI_DEVICE_IDS = [
+    x.strip() for x in os.getenv("DIGI_DEVICE_IDS", "").split(",") if x.strip()
+]

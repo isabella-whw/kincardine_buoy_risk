@@ -8,18 +8,37 @@ import numpy as np
 from datetime import datetime, timezone
 
 from config import (
-    STATION_ID_DEFAULT, PICKLE_DIR, MODEL_FILES,
-    TORONTO_TZ, ONSHORE_DEG,
-    ALERT_STALE_MINUTES, logger,
+    STATION_ID_DEFAULT,
+    PICKLE_DIR,
+    MODEL_FILES,
+    TORONTO_TZ,
+    ONSHORE_DEG,
+    ALERT_STALE_MINUTES,
+    logger,
     TOBERMORY_STATION_ID,
     TOBERMORY_NORMAL_LEVEL_M,
     TOBERMORY_LOOKBACK_HOURS,
 )
-from helper import fmt, now_toronto_str, circ_diff_deg, load_model, predict_from_bundle, predict_scalar_model, safe_del
+from helper import (
+    fmt,
+    now_toronto_str,
+    circ_diff_deg,
+    load_model,
+    predict_from_bundle,
+    predict_scalar_model,
+    safe_del,
+)
 from risk_predict import pred_haz
-from noaa import fetch_ndbc_latest_df, build_datetime_utc, add_month_hour_decimal, ensure_dir_sin_cos 
+from noaa import (
+    fetch_ndbc_latest_df,
+    build_datetime_utc,
+    add_month_hour_decimal,
+    ensure_dir_sin_cos,
+)
 from email_alert import send_email_smtp, should_send_alert
 from tobermory import last_completed_hour_tobermory_min
+from swimsmart import send_prediction_to_swimsmart
+
 
 # Run one end-to-end prediction cycle and return output document.
 def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, dict | None]:
@@ -87,6 +106,7 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
         "wind_dir_deg": preds["wind_dir_deg"],
         "lake_level_delta_in": lake_level_delta_in,
     }])
+
     haz_in["wave_dir_deg"] = np.abs(circ_diff_deg(ONSHORE_DEG, haz_in["wave_dir_deg"]))
     haz_in["wind_dir_deg"] = np.abs(circ_diff_deg(ONSHORE_DEG, haz_in["wind_dir_deg"]))
 
@@ -98,6 +118,7 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
     obs_tor = obs_utc.astimezone(TORONTO_TZ)
     ing_utc = datetime.now(timezone.utc)
     ing_tor = ing_utc.astimezone(TORONTO_TZ)
+
     doc = {
         "recorded_at_utc": fmt(ing_utc),
         "recorded_at_toronto": fmt(ing_tor),
@@ -114,8 +135,18 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
         "wind_factor": float(haz_out["wind_factor"]),
         "total_score": float(haz_out["total_score"]),
         "risk_level": str(haz_out["risk_level"]),
-        "tobermory_m": (float(water_level_min_m) if water_level_min_m is not None else None),
-        "tobermory_in": (float(lake_level_delta_in) if lake_level_delta_in is not None else None),
+        "tobermory_m": float(water_level_min_m) if water_level_min_m is not None else None,
+        "tobermory_in": float(lake_level_delta_in) if lake_level_delta_in is not None else None,
         "lake_level_factor": float(haz_out.get("lake_level_factor", 0.0)),
     }
+
+    try:
+        swimsmart_results = send_prediction_to_swimsmart(doc)
+        doc["swimsmart_sent"] = bool(swimsmart_results)
+        doc["swimsmart_results"] = swimsmart_results
+    except Exception as e:
+        logger.exception("SwimSmart send failed")
+        doc["swimsmart_sent"] = False
+        doc["swimsmart_error"] = repr(e)
+
     return doc, last_doc_mem
