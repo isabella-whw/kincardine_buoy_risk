@@ -24,13 +24,11 @@ def send_email_smtp(subject: str, body: str) -> None:
     if not SMTP_RELAY_PASSWORD: missing.append("SMTP_RELAY_PASSWORD")
     if missing:
         raise RuntimeError(f"SMTP not configured, missing: {', '.join(missing)}")
-
     msg = EmailMessage()
     msg["To"] = ALERT_EMAIL_TO
     msg["From"] = ALERT_EMAIL_FROM
     msg["Subject"] = subject
     msg.set_content(body)
-
     with smtplib.SMTP(SMTP_RELAY_HOST, SMTP_RELAY_PORT, timeout=20) as server:
         server.ehlo()
         server.starttls()
@@ -58,7 +56,6 @@ def should_send_alert(alert_key: str, last_doc_mem: dict | None) -> tuple[bool, 
             last_doc_mem = {}
         last_doc_mem[mem_key] = datetime.now(timezone.utc).isoformat()
         return True, last_doc_mem
-
     db = get_db()
     if db is None:
         return True, last_doc_mem

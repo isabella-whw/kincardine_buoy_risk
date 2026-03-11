@@ -68,10 +68,8 @@ def build_app() -> FastAPI:
             endDate = datetime.now(TORONTO_TZ).date()
         if endDate < startDate:
             raise HTTPException(status_code=400, detail="endDate must be >= startDate")
-
         start_s, end_s = date_to_range_strings(startDate, endDate)
         items = read_history_range(STATION_ID_DEFAULT, start_s, end_s)
-
         return {
             "station_id": STATION_ID_DEFAULT,
             "startDate": startDate.isoformat(),
@@ -79,5 +77,4 @@ def build_app() -> FastAPI:
             "count": len(items),
             "items": items,
         }
-
     return app

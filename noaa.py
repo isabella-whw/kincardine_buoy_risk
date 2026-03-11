@@ -13,11 +13,9 @@ def fetch_ndbc_latest_df(station_id: str) -> pd.DataFrame:
     r = requests.get(url, timeout=20)
     r.raise_for_status()
     text = r.text
-
     lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
     if len(lines) < 3:
         raise RuntimeError("NDBC response too short / malformed")
-
     header = lines[0].lstrip("#").strip().split()
     data_lines = lines[2:]
     df = pd.read_csv(

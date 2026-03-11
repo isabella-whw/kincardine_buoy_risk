@@ -87,11 +87,9 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
             TOBERMORY_STATION_ID,
             lookback_hours=TOBERMORY_LOOKBACK_HOURS,
         )
-
         lake_level_delta_in = (
             water_level_min_m - TOBERMORY_NORMAL_LEVEL_M
         ) / 0.0254
-
     except Exception:
         logger.exception("Tobermory fetch failed; lake factor set to 0")
         water_level_min_m = None
@@ -148,5 +146,5 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
         logger.exception("SwimSmart send failed")
         doc["swimsmart_sent"] = False
         doc["swimsmart_error"] = repr(e)
-
+        
     return doc, last_doc_mem
