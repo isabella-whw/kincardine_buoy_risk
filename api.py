@@ -8,9 +8,11 @@ from zoneinfo import ZoneInfo
 
 from config import STATION_ID_DEFAULT, TORONTO_TZ, logger
 from pipeline import make_prediction
-from firestore import write_latest, read_latest, date_to_range_strings, read_history_range
+from firestore import write_latest, write_forecast, read_latest, date_to_range_strings, read_history_range
 from email_alert import should_send_alert, send_email_smtp
 from helper import now_toronto_str
+from ecmwf_forecast import build_forecast_snapshot
+from fastapi.responses import JSONResponse
 
 # Create and configure the FastAPI application instance.
 def build_app() -> FastAPI:
@@ -77,4 +79,23 @@ def build_app() -> FastAPI:
             "count": len(items),
             "items": items,
         }
+    
+    @app.post("/run_forecast_once")
+    def run_forecast_once():
+        try:
+            forecast_snapshot = build_forecast_snapshot()
+            write_forecast(forecast_snapshot)
+            return {
+                "ok": True,
+                "forecast_retrieved_at_utc": forecast_snapshot["retrieved_at_utc"],
+                "hourly_count": forecast_snapshot["hourly_count"],
+                "three_hourly_count": forecast_snapshot["three_hourly_count"],
+            }
+        except Exception as e:
+            logger.exception("run_forecast_once failed")
+            return JSONResponse(
+                status_code=500,
+                content={"ok": False, "error": repr(e)},
+            )
+
     return app

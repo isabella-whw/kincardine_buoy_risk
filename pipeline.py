@@ -39,7 +39,6 @@ from email_alert import send_email_smtp, should_send_alert
 from tobermory import last_completed_hour_tobermory_min
 from swimsmart import send_prediction_to_swimsmart
 
-
 # Run one end-to-end prediction cycle and return output document.
 def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, dict | None]:
     # Fetch latest NOAA observation and build UTC datetime
@@ -146,5 +145,4 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
         logger.exception("SwimSmart send failed")
         doc["swimsmart_sent"] = False
         doc["swimsmart_error"] = repr(e)
-        
     return doc, last_doc_mem
