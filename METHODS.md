@@ -1,153 +1,189 @@
 # Methods
 
-This document describes the data processing, machine learning prediction, and hazard scoring methodology implemented in this repository.
+This document summarizes the main data sources, preprocessing steps, prediction workflow, hazard scoring framework, forecast workflow, and survey-analysis methods used in the Kincardine Buoy Hazard Prediction System.
 
+---
 
-## 1. Data Source
+## 1. Data Sources
 
-Real-time offshore buoy observations are retrieved from NOAA NDBC Station 45008:
+### 1.1 NOAA NDBC Buoy Data
+The real-time prediction workflow uses offshore buoy observations retrieved from NOAA NDBC station data.
 
-https://www.ndbc.noaa.gov/data/realtime2/
+These observations provide the primary environmental inputs used for nearshore prediction.
 
-Variables used include:
+Typical variables include:
 
-- WVHT — Significant wave height (m)
-- DPD — Dominant wave period (s)
-- WSPD — Wind speed (m/s)
-- WDIR — Wind direction (degrees)
-- MWD — Mean wave direction (degrees)
-- Additional environmental predictors (if required by trained models)
+- wind direction
+- wind speed
+- gust speed
+- wave height
+- dominant period
+- average period
+- mean wave direction
+- pressure
+- air temperature
+- water temperature
+- dew point
 
-All timestamps are parsed as UTC and converted to Toronto local time for storage and reporting.
+### 1.2 ECMWF Forecast Data
+Forecast weather and marine conditions are retrieved using Open-Meteo APIs with ECMWF-backed forecast products.
 
+These include:
 
+#### Weather variables
+- air temperature
+- relative humidity
+- dew point
+- precipitation
+- pressure
+- cloud cover
+- sunshine duration
+- wind gusts
+- wind speed
 
-## 2. Feature Engineering
+#### Marine variables
+- wave height
+- wave direction
+- wave peak period
+- wave period
 
-### 2.1 Timestamp Construction
+### 1.3 Water Level Data
+Water level data are retrieved separately for water-level-based hazard adjustment and related testing.
 
-UTC timestamps are constructed from buoy YY, MM, DD, hh, and mm fields.
+### 1.4 Survey Data
+Survey-response data are analyzed separately to compare perceived swimmer hazard with matched environmental conditions.
 
-Local Toronto time is computed for logging and database storage.
+---
 
+## 2. Preprocessing and Feature Engineering
 
-### 2.2 Directional Encoding
+### 2.1 Time Construction
+NOAA observations are parsed into structured tabular format and converted into UTC datetime values.
 
-Wave and wind directions are transformed into sine and cosine components:
+### 2.2 Derived Features
+Additional predictor variables are derived before prediction.
 
-  sin(θ), cos(θ)
+These include:
 
-This avoids angular discontinuity issues near 0°/360°.
+- month
+- decimal hour
+- directional sine/cosine components for:
+  - wind direction
+  - wave direction
 
-Predicted sin/cos components are later reconstructed into directional angles using:
+### 2.3 Directional Variables
+Circular variables are represented using sine/cosine transformations for modeling and reconstructed later into directional angles.
 
-  θ = arctan2(sin, cos)
+---
 
+## 3. Nearshore Prediction Workflow
 
-### 2.3 Onshore Direction Transformation
+The operational workflow uses trained machine learning models to estimate nearshore environmental conditions from offshore buoy observations.
 
-To quantify onshore forcing, wave and wind directions are transformed relative to a fixed shoreline reference angle:
+The predicted variables are:
 
-  onshore_reference = 315°
+- wave height
+- wave period
+- wind speed
+- wave direction
+- wind direction
 
-The relative forcing angle is computed as:
+These predicted values are then passed into the hazard scoring framework.
 
-  relative_angle = | (direction − 315°) |
+---
 
-Smaller values indicate stronger onshore forcing.
+## 4. Direction Handling
 
+Wave and wind directions are converted relative to shoreline orientation before hazard scoring.
 
+The system uses an onshore reference angle of **315°**.
 
-## 3. Machine Learning Prediction
+Angular differences are computed using circular difference methods so that directional scoring reflects approach relative to shore rather than raw compass direction.
 
-Five trained models are applied:
+---
 
-- WaveHeight.pkl
-- WavePeriod.pkl
-- WindSpeed.pkl
-- WaveDirection.pkl
-- WindDirection.pkl
+## 5. Hazard Scoring Framework
 
-Directional models are implemented using sine/cosine decomposition.
+Hazard classification is based on a rule-based scoring framework applied to the predicted environmental conditions.
 
-Models were trained using historical offshore NOAA buoy data aligned with nearshore conditions at Kincardine.
+The main operational inputs are:
 
-Each hourly execution produces predicted nearshore conditions.
+- wave height
+- wave direction relative to shore
+- wave period
+- wind speed
+- wind direction relative to shore
 
+Historical testing versions also include additional scoring variants, such as:
 
+- modified wave-angle scoring
+- re-scaled score bins
+- weighted scoring systems
+- maximum wave height over the previous 12 hours
 
-## 4. Hazard Risk Scoring
+Different hazard scoring systems tested during development are archived separately in the repository.
 
-Predicted environmental conditions are converted into a quantitative hazard score using a rule-based scoring system.
+---
 
-The following variables are used:
+## 6. Forecast Workflow
 
-- Predicted significant wave height (m)
-- Predicted dominant wave period (s)
-- Predicted wind speed (m/s)
-- Wave direction relative to onshore (degrees)
-- Wind direction relative to onshore (degrees)
+A separate forecast workflow retrieves weather and marine forecast data and combines them into forecast snapshots.
 
+This workflow includes:
 
-### 4.1 Wave Height Contribution
+1. weather forecast retrieval
+2. marine forecast retrieval
+3. UTC timestamp alignment
+4. merged forecast generation
+5. hourly and 3-hourly forecast formatting
 
-Wave height contributes increasing hazard points as magnitude increases.
+These forecast outputs are stored for later retrieval and comparison.
 
-Larger waves correspond to greater nearshore energy and increased rip current likelihood.
+---
 
+## 7. Survey Analysis Workflow
 
-### 4.2 Wave Period Contribution
+A separate survey-analysis workflow is used to compare survey responses with forecast and matched environmental conditions.
 
-Longer wave periods increase hazard contribution due to higher wave energy and enhanced nearshore circulation.
+This workflow includes:
 
-Short-period waves contribute less to total hazard.
+1. loading Qualtrics survey responses
+2. filtering and cleaning responses
+3. converting selected response categories to numeric values
+4. computing descriptive statistics
+5. computing class-based forecast summaries
+6. matching photo responses to environmental timestamps
+7. computing photo-level and class-based summaries
 
+The survey workflow is used to compare model-based hazard conditions with perceived hazard from respondents.
 
-### 4.3 Wind Contribution
+---
 
-Wind contribution depends on:
+## 8. Historical Model Testing
 
-- Wind speed magnitude
-- Wind direction relative to onshore
+Multiple hazard scoring systems were tested during development.
 
-Stronger onshore winds increase setup and circulation hazard.
+These include:
 
-Offshore winds reduce hazard contribution.
+- the original Great Lakes Rip Current Checklist (GLRCC)
+- thumbnail-based scoring versions
+- re-scaled scoring systems
+- versions including 12-hour wave-height context
+- weighted scoring systems
 
+These versions were used for historical reruns and comparison of hazard outputs.
 
+---
 
-### 4.4 Total Hazard Score
+## 9. Output Categories
 
-The total hazard score is computed as:
+The repository produces several categories of outputs, including:
 
-  total_score = wave_factor + period_factor + wind_factor
+- real-time hazard predictions
+- historical prediction reruns
+- forecast snapshots
+- PDF summaries and plots
+- survey summary outputs
+- matched-condition comparison tables
 
-Risk classification thresholds:
-
-  - Low Risk: total_score < 4
-  - Moderate Risk: 4 ≤ total_score ≤ 7
-  - High Risk: total_score > 7
-
-These thresholds are selected to provide stable, interpretable public-facing hazard categories.
-
-
-
-## 5. Automation and Monitoring
-
-The system runs automatically every hour using Google Cloud Scheduler.
-
-Each prediction is stored in Firestore under:
-  
-  predictions/45008/history
-
-Two automated alert mechanisms are implemented:
-
-1. Stale Data Alert
-
-  - Triggered when buoy observations exceed a defined age threshold.
-
-2. System Failure Alert  
-
-  - Triggered when the prediction pipeline raises an exception.
-
-Alerts are sent via SMTP email.
+---

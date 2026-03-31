@@ -1,8 +1,13 @@
+# ecmwf_forecast.py
+# Fetches ECMWF weather and marine forecasts using Open-Meteo APIs.
+# Combines datasets, formats timestamps, and prepares hourly/3-hourly outputs.
+
 from __future__ import annotations
 
 import requests
 import pandas as pd
 
+# Config
 LAT = 44.1834
 LON = -81.6331
 
@@ -30,17 +35,17 @@ MARINE_VARS = [
 
 LOCAL_TZ = "America/Toronto"
 
-
+# Fetch JSON response from API.
 def _fetch_json(url: str, params: dict) -> dict:
     r = requests.get(url, params=params, timeout=30)
     r.raise_for_status()
     return r.json()
 
-
+# Convert API time array to pandas datetime.
 def _hourly_time_index(hourly: dict) -> pd.Series:
     return pd.to_datetime(hourly["time"])
 
-
+# Convert local timestamps to UTC.
 def _local_to_utc(series: pd.Series) -> pd.Series:
     return (
         series.dt.tz_localize(LOCAL_TZ)
@@ -48,7 +53,7 @@ def _local_to_utc(series: pd.Series) -> pd.Series:
         .dt.tz_localize(None)
     )
 
-
+# Fetch ECMWF weather forecast data.
 def fetch_weather_df(
     latitude: float = LAT,
     longitude: float = LON,
@@ -67,7 +72,6 @@ def fetch_weather_df(
     hourly = data.get("hourly", {})
     if not hourly or "time" not in hourly:
         raise RuntimeError("Weather response missing hourly data")
-
     df = pd.DataFrame(
         {
             "time_local": _hourly_time_index(hourly),
@@ -85,7 +89,7 @@ def fetch_weather_df(
     df["time_utc"] = _local_to_utc(df["time_local"])
     return df
 
-
+# Fetch ECMWF marine forecast data.
 def fetch_marine_df(
     latitude: float = LAT,
     longitude: float = LON,
@@ -103,7 +107,6 @@ def fetch_marine_df(
     hourly = data.get("hourly", {})
     if not hourly or "time" not in hourly:
         raise RuntimeError("Marine response missing hourly data")
-
     df = pd.DataFrame(
         {
             "time_local": _hourly_time_index(hourly),
@@ -116,7 +119,7 @@ def fetch_marine_df(
     df["time_utc"] = _local_to_utc(df["time_local"])
     return df
 
-
+# Merge weather and marine forecasts into a single dataframe.
 def fetch_ecmwf_forecast_df(
     latitude: float = LAT,
     longitude: float = LON,
@@ -149,33 +152,30 @@ def fetch_ecmwf_forecast_df(
 
     return forecast_df
 
-
+# Convert dataframe to hourly record format.
 def make_hourly_records(df: pd.DataFrame) -> list[dict]:
     out = df.copy()
     out["time_utc"] = out["time_utc"].dt.strftime("%Y-%m-%d %H:%M")
     out["retrieved_at_utc"] = out["retrieved_at_utc"].dt.strftime("%Y-%m-%d %H:%M:%S")
     return out.to_dict(orient="records")
 
-
+# Convert dataframe to 3-hourly record format.
 def make_three_hourly_records(df: pd.DataFrame) -> list[dict]:
     out = df.iloc[::3].copy().reset_index(drop=True)
     out["time_utc"] = out["time_utc"].dt.strftime("%Y-%m-%d %H:%M")
     out["retrieved_at_utc"] = out["retrieved_at_utc"].dt.strftime("%Y-%m-%d %H:%M:%S")
     return out.to_dict(orient="records")
 
-
+# Build forecast snapshot for storage.
 def build_forecast_snapshot(
     latitude: float = LAT,
     longitude: float = LON,
     forecast_days: int = 10,
 ) -> dict:
     df = fetch_ecmwf_forecast_df(latitude, longitude, forecast_days)
-
     if df.empty:
         raise RuntimeError("ECMWF forecast dataframe is empty after filtering")
-
     retrieved_at_utc = df["retrieved_at_utc"].iloc[0]
-
     snapshot = {
         "retrieved_at_utc": retrieved_at_utc.strftime("%Y-%m-%d %H:%M:%S"),
         "latitude": latitude,
@@ -188,7 +188,7 @@ def build_forecast_snapshot(
     }
     return snapshot
 
-
+# Run forecast retrieval and save outputs to CSV.
 def main() -> None:
     snapshot = build_forecast_snapshot()
 
