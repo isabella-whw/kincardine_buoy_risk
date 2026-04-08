@@ -1,0 +1,37 @@
+group,column_id,question,n,mean,median,std,min,max,class (mean)
+ranking,Q11_1,"Rank the lake factors (by dragging) that you think contribute to surf hazards, from most (1) to least important (5). - Wind Speed",16,3.0,3.0,1.4605934866804429,1.0,5.0,High
+ranking,Q11_2,"Rank the lake factors (by dragging) that you think contribute to surf hazards, from most (1) to least important (5). - Wave Height",16,2.4375,2.0,1.547847968417226,1.0,5.0,Moderate
+ranking,Q11_3,"Rank the lake factors (by dragging) that you think contribute to surf hazards, from most (1) to least important (5). - Wave Period",16,3.25,3.0,1.4832396974191326,1.0,5.0,High
+ranking,Q11_4,"Rank the lake factors (by dragging) that you think contribute to surf hazards, from most (1) to least important (5). - Wind Direction",16,2.875,3.0,1.3102162671355697,1.0,5.0,High
+ranking,Q11_5,"Rank the lake factors (by dragging) that you think contribute to surf hazards, from most (1) to least important (5). - Wave Direction",16,3.4375,3.0,1.2632629707758134,1.0,5.0,High
+wave_height,Q10_1,Choose the risk level that you would associate with these wave height conditions. - < 0.3 meters (m),16,1.0625,1.0,0.25,1.0,2.0,Low
+wave_height,Q10_2,Choose the risk level that you would associate with these wave height conditions. - Between 0.3 - 0.6 m,16,1.4375,1.0,0.51234753829798,1.0,2.0,Low
+wave_height,Q10_3,Choose the risk level that you would associate with these wave height conditions. - Between 0.6 - 0.9 m,16,1.9375,2.0,0.5737304826019501,1.0,3.0,Moderate
+wave_height,Q10_4,Choose the risk level that you would associate with these wave height conditions. - Between 0.9 - 1.2 m,16,2.25,2.0,0.4472135954999579,2.0,3.0,Moderate
+wave_height,Q10_5,Choose the risk level that you would associate with these wave height conditions. - Between 1.2 - 1.5 m,16,2.625,3.0,0.5,2.0,3.0,High
+wave_height,Q10_6,Choose the risk level that you would associate with these wave height conditions. - Between 1.5 - 1.8 m,16,2.875,3.0,0.3415650255319866,2.0,3.0,High
+wave_height,Q10_7,Choose the risk level that you would associate with these wave height conditions. - > 1.8 m,16,2.9375,3.0,0.25,2.0,3.0,High
+wave_period,Q13_1,Choose the risk level that you would associate with these wave period conditions. - < 2 seconds (s),15,2.2,3.0,0.9411239481143203,1.0,3.0,Moderate
+wave_period,Q13_2,Choose the risk level that you would associate with these wave period conditions. - Between 2 - 4 s,15,2.1333333333333333,2.0,0.7432233529572065,1.0,3.0,Moderate
+wave_period,Q13_3,Choose the risk level that you would associate with these wave period conditions. - Between 4 - 6 s,15,2.2,2.0,0.4140393356054125,2.0,3.0,Moderate
+wave_period,Q13_4,Choose the risk level that you would associate with these wave period conditions. - Between 6 - 8 s,15,2.1333333333333333,2.0,0.833809387832792,1.0,3.0,Moderate
+wave_period,Q13_5,Choose the risk level that you would associate with these wave period conditions. - > 8 s,15,1.8,1.0,1.01418510567422,1.0,3.0,Moderate
+wind_speed,Q14_1,Choose the risk level that you would associate with these wind speed conditions. - < 10 kilometers per hour (k/h),16,1.0,1.0,0.0,1.0,1.0,Low
+wind_speed,Q14_2,Choose the risk level that you would associate with these wind speed conditions. - Between 10 and 20 k/h,15,1.3333333333333333,1.0,0.48795003647426666,1.0,2.0,Low
+wind_speed,Q14_3,Choose the risk level that you would associate with these wind speed conditions. - Between 20 and 30 k/h,16,2.0625,2.0,0.25,2.0,3.0,Moderate
+wind_speed,Q14_4,Choose the risk level that you would associate with these wind speed conditions. - Between 30 and 40 k/h,16,2.4375,2.0,0.51234753829798,2.0,3.0,Moderate
+wind_speed,Q14_5,Choose the risk level that you would associate with these wind speed conditions. - Between 40 and 50 k/h,16,3.0,3.0,0.0,3.0,3.0,High
+wind_speed,Q14_6,Choose the risk level that you would associate with these wind speed conditions. - > 50 k/h,16,3.0,3.0,0.0,3.0,3.0,High
+photo,Q16,Rate the risk level for the surf conditions in this photo.,16,2.0,2.0,0.5163977794943222,1.0,3.0,Moderate
+photo,Q17,Rate the risk level for the surf conditions in this photo.,16,1.375,1.0,0.5,1.0,2.0,Low
+photo,Q18,Rate the risk level for the surf conditions in this photo.,16,1.1875,1.0,0.4031128874149275,1.0,2.0,Low
+photo,Q19,Rate the risk level for the surf conditions in this photo.,16,1.0,1.0,0.0,1.0,1.0,Low
+photo,Q20,Rate the risk level for the surf conditions in this photo.,16,1.125,1.0,0.3415650255319866,1.0,2.0,Low
+photo,Q21,Rate the risk level for the surf conditions in this photo.,16,1.125,1.0,0.3415650255319866,1.0,2.0,Low
+photo,Q22,Rate the risk level for the surf conditions in this photo.,16,2.5,2.5,0.5163977794943222,2.0,3.0,High
+photo,Q23,Rate the risk level for the surf conditions in this photo.,16,2.0,2.0,0.7302967433402214,1.0,3.0,Moderate
+photo,Q26,Rate the risk level for the surf conditions in this photo.,16,1.5,1.5,0.5163977794943222,1.0,2.0,Moderate
+photo,Q27,Rate the risk level for the surf conditions in this photo.,16,2.5,2.5,0.5163977794943222,2.0,3.0,High
+photo,Q28,Rate the risk level for the surf conditions in this photo.,16,1.1875,1.0,0.4031128874149275,1.0,2.0,Low
+photo,Q29,Rate the risk level for the surf conditions in this photo.,16,2.8125,3.0,0.4031128874149275,2.0,3.0,High
+photo,Q30,Rate the risk level for the surf conditions in this photo.,16,2.625,3.0,0.6191391873668903,1.0,3.0,High
