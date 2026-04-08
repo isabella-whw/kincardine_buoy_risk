@@ -57,11 +57,11 @@ def pred_haz(df):
                 )
             )
         )
-    out["wave_factor"] = wave_factor
+    out["wave_factor"] = np.maximum(wave_factor - 0.5, 0.0)
 
     # Max wave height over past 12 hours factor
     mh = df["max_wave_height_12h_m"].astype(float)
-    out["max_wave_factor"] = np.select(
+    maxh = np.select(
         [
             (mh >= 1.25) & (mh < 1.5),
             (mh >= 1.5),
@@ -69,7 +69,10 @@ def pred_haz(df):
         [1.0, 2.0],
         default=0.0,
     ).astype(float)
-    
+
+    max_wave_penalty = np.where(df["wave_dir_deg"].astype(float) > 30, 0.5, 0.0)
+    out["max_wave_factor"] = np.maximum(maxh - max_wave_penalty, 0.0)
+
     #Defines wave period bins, depending on height
     wp = df["wave_period_s"].astype(float)
     small_wave = h <= 1.25

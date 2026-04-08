@@ -63,11 +63,10 @@ def pred_haz(df):
     mh = df["max_wave_height_6h_m"].astype(float)
     out["max_wave_factor"] = np.select(
         [
-            (mh >= 1.0) & (mh < 1.25),
             (mh >= 1.25) & (mh < 1.5),
             (mh >= 1.5),
         ],
-        [0.5, 1.0, 2.0],
+        [1.0, 2.0],
         default=0.0,
     ).astype(float)
     
