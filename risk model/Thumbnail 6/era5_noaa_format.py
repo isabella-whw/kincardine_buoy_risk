@@ -4,8 +4,8 @@ import pandas as pd
 from Cstats import circ_diff_deg
 from Thumbnail6 import pred_haz
 
-PREDICTIONS_CSV = "NOAA_2019to2024_predictions_12h.csv"
-OUTPUT_CSV = "NOAA_2019to2024_predictions6.csv"
+PREDICTIONS_CSV = "era5_noaa_format.csv"
+OUTPUT_CSV = "era5_noaa_format_prediction6.csv"
 
 df = pd.read_csv(PREDICTIONS_CSV)
 df["datetime"] = pd.to_datetime(df["datetime"])
