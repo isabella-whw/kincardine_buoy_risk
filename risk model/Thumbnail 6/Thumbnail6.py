@@ -67,8 +67,8 @@ def pred_haz(df):
         [
             (mh >= 0.0) & (mh < 1.25) & max_wave_dir_0_30,
             (mh >= 0.0) & (mh < 1.25) & max_wave_dir_over_30,
-            (mh >= 1.25) & (mh < 1.75) & max_wave_dir_0_30,
-            (mh >= 1.25) & (mh < 1.75) & max_wave_dir_over_30,
+            (mh >= 1.25) & (mh < 1.5) & max_wave_dir_0_30,
+            (mh >= 1.25) & (mh < 1.5) & max_wave_dir_over_30,
             (mh >= 1.5) & max_wave_dir_0_30,
             (mh >= 1.5) & max_wave_dir_over_30,
         ],

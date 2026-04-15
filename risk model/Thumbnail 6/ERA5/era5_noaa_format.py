@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
-
+import sys
+import os
+sys.path.append(os.path.abspath(".."))
 from Cstats import circ_diff_deg
 from Thumbnail6 import pred_haz
 
