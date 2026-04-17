@@ -8,7 +8,6 @@ def process_file(input_csv):
     df = pd.read_csv(input_csv)
     df["datetime"] = pd.to_datetime(df["datetime"])
     df = df.sort_values("datetime").copy()
-
     df = df.set_index("datetime")
     df["max_wave_height_12h_m"] = (
         df["wave_height_m"]
@@ -16,7 +15,6 @@ def process_file(input_csv):
         .max()
     )
     df = df.reset_index()
-
     haz_in = df[[
         "wave_height_m",
         "wave_dir_deg",
@@ -25,7 +23,6 @@ def process_file(input_csv):
         "wind_dir_deg",
         "max_wave_height_12h_m"
     ]].copy()
-
     haz_out = pred_haz(haz_in)
     return pd.concat([df, haz_out], axis=1)
 
@@ -49,6 +46,15 @@ merged = pd.merge_asof(
 
 merged = merged.dropna(subset=["total_score_era5", "risk_level_era5"]).copy()
 
+order = ["Low", "Moderate", "High", "Extreme"]
+
+merged["risk_level_noaa"] = pd.Categorical(
+    merged["risk_level_noaa"], categories=order, ordered=True
+)
+merged["risk_level_era5"] = pd.Categorical(
+    merged["risk_level_era5"], categories=order, ordered=True
+)
+
 agreement = (merged["risk_level_noaa"] == merged["risk_level_era5"]).mean() * 100
 score_diff = (merged["total_score_noaa"] - merged["total_score_era5"]).abs().mean()
 
@@ -59,9 +65,10 @@ confusion = pd.crosstab(
     colnames=["ERA5"]
 )
 
-print(f"Matched rows: {len(merged)}")
+confusion = confusion.reindex(index=order, columns=order, fill_value=0)
+
 print(f"Risk level agreement: {agreement:.4f}%")
-print(f"Mean absolute score difference: {score_diff:.4f}")
+print(f"Mean score difference: {score_diff:.4f}")
 print("Confusion matrix:")
 print(confusion)
 
