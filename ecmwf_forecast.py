@@ -6,6 +6,12 @@ from __future__ import annotations
 
 import requests
 import pandas as pd
+import numpy as np
+from datetime import datetime, timezone
+
+from config import ONSHORE_DEG, TORONTO_TZ
+from helper import circ_diff_deg, fmt
+from risk_predict import pred_haz
 
 # Config
 LAT = 44.1834
@@ -24,6 +30,7 @@ WEATHER_VARS = [
     "sunshine_duration",
     "wind_gusts_10m",
     "wind_speed_10m",
+    "wind_direction_10m",
 ]
 
 MARINE_VARS = [
@@ -84,6 +91,7 @@ def fetch_weather_df(
             "sunshine_duration_s": hourly["sunshine_duration"],
             "wind_gusts_10m_ms": hourly["wind_gusts_10m"],
             "wind_speed_10m_ms": hourly["wind_speed_10m"],
+            "wind_direction_10m_deg": hourly["wind_direction_10m"],
         }
     )
     df["time_utc"] = _local_to_utc(df["time_local"])
@@ -146,11 +154,35 @@ def fetch_ecmwf_forecast_df(
         .reset_index(drop=True)
     )
     forecast_df["retrieved_at_utc"] = retrieved_at_utc
-    forecast_df["forecast_horizon_hours"] = (
-        (forecast_df["time_utc"] - retrieved_at_utc).dt.total_seconds() / 3600.0
-    )
+    forecast_df = add_ecmwf_hazard(forecast_df)
 
     return forecast_df
+
+def add_ecmwf_hazard(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+
+    haz_in = pd.DataFrame(
+        {
+            "wave_height_m": out["wave_height_m"].astype(float),
+            "wave_dir_deg": np.abs(circ_diff_deg(ONSHORE_DEG, out["wave_direction_deg"].astype(float))),
+            "wave_period_s": out["wave_period_s"].astype(float),
+            "wind_speed_ms": out["wind_speed_10m_ms"].astype(float),
+            "wind_dir_deg": np.abs(circ_diff_deg(ONSHORE_DEG, out["wind_direction_10m_deg"].astype(float))),
+        }
+    )
+
+    haz_out = pred_haz(haz_in)
+    out["wave_dir_deg"] = haz_in["wave_dir_deg"]
+    out["wind_speed_ms"] = haz_in["wind_speed_ms"]
+    out["wind_dir_deg"] = haz_in["wind_dir_deg"]
+    out["wave_factor"] = haz_out["wave_factor"]
+    out["period_factor"] = haz_out["period_factor"]
+    out["wind_factor"] = haz_out["wind_factor"]
+    out["lake_level_factor"] = haz_out.get("lake_level_factor", 0.0)
+    out["total_score"] = haz_out["total_score"]
+    out["risk_level"] = haz_out["risk_level"]
+
+    return out
 
 # Convert dataframe to hourly record format.
 def make_hourly_records(df: pd.DataFrame) -> list[dict]:
@@ -176,8 +208,12 @@ def build_forecast_snapshot(
     if df.empty:
         raise RuntimeError("ECMWF forecast dataframe is empty after filtering")
     retrieved_at_utc = df["retrieved_at_utc"].iloc[0]
+    retrieved_at_toronto = retrieved_at_utc.tz_localize("UTC").tz_convert(TORONTO_TZ)
     snapshot = {
         "retrieved_at_utc": retrieved_at_utc.strftime("%Y-%m-%d %H:%M:%S"),
+        "retrieved_at_toronto": retrieved_at_toronto.strftime("%Y-%m-%d %H:%M:%S"),
+        "recorded_at_utc": fmt(datetime.now(timezone.utc)),
+        "recorded_at_toronto": fmt(datetime.now(timezone.utc).astimezone(TORONTO_TZ)),
         "latitude": latitude,
         "longitude": longitude,
         "forecast_days": forecast_days,
@@ -187,6 +223,62 @@ def build_forecast_snapshot(
         "three_hourly_records": make_three_hourly_records(df),
     }
     return snapshot
+
+def build_latest_ecmwf_doc_from_df(df: pd.DataFrame) -> dict:
+    if df.empty:
+        raise RuntimeError("ECMWF forecast dataframe is empty after filtering")
+
+    row = df.iloc[0]
+    ing_utc = datetime.now(timezone.utc)
+    ing_tor = ing_utc.astimezone(TORONTO_TZ)
+
+    return {
+        "recorded_at_utc": fmt(ing_utc),
+        "recorded_at_toronto": fmt(ing_tor),
+        "timestamp_utc": pd.to_datetime(row["time_utc"]).strftime("%Y-%m-%d %H:%M:%S"),
+        "timestamp_toronto": pd.to_datetime(row["time_utc"], utc=True).tz_convert(TORONTO_TZ).strftime("%Y-%m-%d %H:%M:%S"),
+        "station_id": "ecmwf",
+        "wave_height_m": float(row["wave_height_m"]),
+        "wave_dir_deg": float(row["wave_dir_deg"]),
+        "wave_period_s": float(row["wave_period_s"]),
+        "wind_speed_ms": float(row["wind_speed_ms"]),
+        "wind_dir_deg": float(row["wind_dir_deg"]),
+        "wave_factor": float(row["wave_factor"]),
+        "period_factor": float(row["period_factor"]),
+        "wind_factor": float(row["wind_factor"]),
+        "lake_level_factor": float(row.get("lake_level_factor", 0.0)),
+        "total_score": float(row["total_score"]),
+        "risk_level": str(row["risk_level"]),
+    }
+
+def build_forecast_products(
+    latitude: float = LAT,
+    longitude: float = LON,
+    forecast_days: int = 10,
+) -> tuple[dict, dict]:
+    df = fetch_ecmwf_forecast_df(latitude, longitude, forecast_days)
+    if df.empty:
+        raise RuntimeError("ECMWF forecast dataframe is empty after filtering")
+
+    retrieved_at_utc = df["retrieved_at_utc"].iloc[0]
+    retrieved_at_toronto = retrieved_at_utc.tz_localize("UTC").tz_convert(TORONTO_TZ)
+
+    snapshot = {
+        "retrieved_at_utc": retrieved_at_utc.strftime("%Y-%m-%d %H:%M:%S"),
+        "retrieved_at_toronto": retrieved_at_toronto.strftime("%Y-%m-%d %H:%M:%S"),
+        "recorded_at_utc": fmt(datetime.now(timezone.utc)),
+        "recorded_at_toronto": fmt(datetime.now(timezone.utc).astimezone(TORONTO_TZ)),
+        "latitude": latitude,
+        "longitude": longitude,
+        "forecast_days": forecast_days,
+        "hourly_count": len(df),
+        "three_hourly_count": len(df.iloc[::3]),
+        "hourly_records": make_hourly_records(df),
+        "three_hourly_records": make_three_hourly_records(df),
+    }
+
+    latest_doc = build_latest_ecmwf_doc_from_df(df)
+    return snapshot, latest_doc
 
 # Run forecast retrieval and save outputs to CSV.
 def main() -> None:

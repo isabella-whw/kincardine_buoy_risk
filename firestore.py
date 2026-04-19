@@ -124,3 +124,27 @@ def write_forecast(snapshot: dict) -> None:
             ops = 0
     if ops > 0:
         batch.commit()
+
+def write_latest_ecmwf(doc: dict) -> None:
+    if not USE_FIRESTORE:
+        return
+    db = get_db()
+    if db is None:
+        return
+    station_id = doc["station_id"]
+    db.collection("predictions_ecmwf").document(station_id).set(doc)
+    hist_id = history_doc_id(doc)
+    db.collection("predictions_ecmwf") \
+        .document(station_id) \
+        .collection("history") \
+        .document(hist_id) \
+        .set(doc)
+
+def read_latest_ecmwf(station_id: str) -> dict | None:
+    if not USE_FIRESTORE:
+        return None
+    db = get_db()
+    if db is None:
+        return None
+    snap = db.collection("predictions_ecmwf").document(station_id).get()
+    return snap.to_dict() if snap.exists else None

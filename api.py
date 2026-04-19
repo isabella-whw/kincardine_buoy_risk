@@ -8,10 +8,18 @@ from zoneinfo import ZoneInfo
 
 from config import STATION_ID_DEFAULT, TORONTO_TZ, logger
 from pipeline import make_prediction
-from firestore import write_latest, write_forecast, read_latest, date_to_range_strings, read_history_range
+from firestore import (
+    write_latest,
+    write_forecast,
+    write_latest_ecmwf,
+    read_latest,
+    read_latest_ecmwf,
+    date_to_range_strings,
+    read_history_range,
+)
 from email_alert import should_send_alert, send_email_smtp
 from helper import now_toronto_str
-from ecmwf_forecast import build_forecast_snapshot
+from ecmwf_forecast import build_forecast_snapshot, fetch_ecmwf_forecast_df, build_latest_ecmwf_doc_from_df
 from fastapi.responses import JSONResponse
 
 # Create and configure the FastAPI application instance.
@@ -85,6 +93,7 @@ def build_app() -> FastAPI:
         try:
             forecast_snapshot = build_forecast_snapshot()
             write_forecast(forecast_snapshot)
+
             return {
                 "ok": True,
                 "forecast_retrieved_at_utc": forecast_snapshot["retrieved_at_utc"],
@@ -93,6 +102,33 @@ def build_app() -> FastAPI:
             }
         except Exception as e:
             logger.exception("run_forecast_once failed")
+            return JSONResponse(
+                status_code=500,
+                content={"ok": False, "error": repr(e)},
+            )
+            
+    @app.get("/latest_ecmwf")
+    def latest_ecmwf():
+        doc = read_latest_ecmwf("ecmwf")
+        if not doc:
+            raise HTTPException(status_code=404, detail="No ECMWF prediction stored yet")
+        return doc
+
+    @app.post("/run_ecmwf_once", include_in_schema=False)
+    def run_ecmwf_once():
+        try:
+            df = fetch_ecmwf_forecast_df()
+            latest_ecmwf_doc = build_latest_ecmwf_doc_from_df(df)
+            write_latest_ecmwf(latest_ecmwf_doc)
+
+            return {
+                "ok": True,
+                "timestamp_utc": latest_ecmwf_doc["timestamp_utc"],
+                "risk_level": latest_ecmwf_doc["risk_level"],
+                "total_score": latest_ecmwf_doc["total_score"],
+            }
+        except Exception as e:
+            logger.exception("run_ecmwf_once failed")
             return JSONResponse(
                 status_code=500,
                 content={"ok": False, "error": repr(e)},
