@@ -27,105 +27,104 @@ def pred_haz(df):
     out = pd.DataFrame(index=df.index)
 
     #Wave direction classes for on-shore and oblique
-    wave_dir_0_60 = df["wave_dir_deg"].between(0, 60)
-    wave_dir_60_90 = df["wave_dir_deg"].between(61, 90)
+    wave_dir_0_30 = df["wave_dir_deg"].between(0, 30, inclusive="both")
+    wave_dir_30_60 = (df["wave_dir_deg"] > 30) & (df["wave_dir_deg"] <= 60)
+    wave_dir_60_90 = (df["wave_dir_deg"] > 60) & (df["wave_dir_deg"] <= 180)
 
     #Wave height bins, depending on direction
-    h = df["wave_height_m"]
+    h = df["wave_height_m"].astype(float)
     wave_factor = pd.Series(0.0, index=df.index)
     wave_height_bins = [
-        (h.between(0, 0.60), 1, 0.5),
-        (h.between(0.60, 0.76), 2.0, 1.5),
-        (h.between(0.76, 0.91), 3.0, 2.5),
-        (h.between(0.91, 1.06), 4.5, 4.0),
-        (h.between(1.06, 1.21), 6.5, 6),
-        (h.between(1.21, 1.37), 8, 7.5),
-        (h.between(1.37, 2.13), 10, 9),
-        (h > 2.13, 13, 12)
+        ((h >= 0.0)  & (h < 0.25), 0.0, 0.0, 0.0),
+        ((h >= 0.25) & (h < 0.5),  1.0, 0.5, 0.0),
+        ((h >= 0.5)  & (h < 0.75), 2.0, 1.5, 1.0),
+        ((h >= 0.75) & (h < 1.0),  3.0, 2.5, 2.0),
+        ((h >= 1.0)  & (h < 1.25), 4.0, 3.5, 3.0),
+        ((h >= 1.25) & (h < 1.5),  5.0, 4.5, 4.0),
+        ((h >= 1.5)  & (h < 2.0),  6.0, 5.5, 5.0),
+        (h >= 2.0,                 7.0, 6.5, 6.0),
     ]
-
+    
     #Computes the wave height factor for a given direction
-    for mask, val_0_60, val_60_90 in wave_height_bins:
+    for mask, val_0_30, val_30_60, val_60_90 in wave_height_bins:
         wave_factor = wave_factor.where(
             ~mask,
-            np.where(wave_dir_0_60, val_0_60,
-            np.where(wave_dir_60_90, val_60_90,
-            0.0))
+            np.where(
+                wave_dir_0_30, val_0_30,
+                np.where(
+                    wave_dir_30_60, val_30_60,
+                    np.where(wave_dir_60_90, val_60_90, 0.0)
+                )
+            )
         )
     out["wave_factor"] = wave_factor
 
+    # Max wave height over past 12 hours factor
+    mh = df["max_wave_height_12h_m"].astype(float)
+    max_wave_dir_0_30 = df["wave_dir_deg"].between(0, 30, inclusive="both")
+    max_wave_dir_over_30 = df["wave_dir_deg"] > 30
+    out["max_wave_factor"] = np.select(
+        [
+            (mh >= 0.0) & (mh < 1.25) & max_wave_dir_0_30,
+            (mh >= 0.0) & (mh < 1.25) & max_wave_dir_over_30,
+            (mh >= 1.25) & (mh < 1.5) & max_wave_dir_0_30,
+            (mh >= 1.25) & (mh < 1.5) & max_wave_dir_over_30,
+            (mh >= 1.5) & max_wave_dir_0_30,
+            (mh >= 1.5) & max_wave_dir_over_30,
+        ],
+        [0.0, 0.0, 0.5, 0.5, 1.0, 1.0],
+        default=0.0,
+    ).astype(float)
+
     #Defines wave period bins, depending on height
-    wp = df["wave_period_s"]
-    bins = [4.5, 6, 7, np.inf]
-    idx = np.digitize(wp, bins) - 1
-    labels_small_waves = np.array([0.5, 1.5, 2.0])
-    labels_large_waves = np.array([1, 2, 3])
+    wp = df["wave_period_s"].astype(float)
+    small_wave = h <= 1.25
 
     #Computes the wave period factor for a given height
-    out["period_factor"] = np.where(
-    h < 0.91,
-    labels_small_waves[idx],
-    labels_large_waves[idx]
-    )
-        
-    #Wind direction classes for on-shore and offshore
-    wind_dir_0_90 = df["wind_dir_deg"].between(0, 90)
-    wind_dir_90_180 = df["wind_dir_deg"].between(91, 180)
+    out["period_factor"] = np.select(
+        [
+            (wp >= 4.5) & (wp < 5.5) & small_wave,
+            (wp >= 4.5) & (wp < 5.5) & ~small_wave,
+            (wp >= 5.5) & (wp <= 6.5) & small_wave,
+            (wp >= 5.5) & (wp <= 6.5) & ~small_wave,
+            (wp > 6.5) & small_wave,
+            (wp > 6.5) & ~small_wave,
+        ],
+        [0.5, 1.0, 1.5, 2.0, 2.0, 3.0],
+        default=0.0,
+    ).astype(float)
 
-    #Wind speed bins, depending on direction
-    ws = df["wind_speed_ms"]
-    wind_factor = pd.Series(0.0, index=df.index)
-    wind_speed_bins = [
-        (ws.between(0, 3.08), 0.5, 0.0),
-        (ws.between(3.08, 4.63), 0.75, 0.5),
-        (ws.between(4.63, 6.17), 1.0, 0.75),
-        (ws.between(6.17, 7.71), 1.25, 1),
-        (ws.between(7.71, 9.25), 1.50, 1.25),
-        (ws.between(9.25, 10.28), 1.75, 1.5),
-        (ws > 10.28, 2.0, 1.75)
-    ]
-
-    #Computes the wind speed factor for a given direction
-    for mask, val_on, val_off in wind_speed_bins:
-        wind_factor = wind_factor.where(
-            ~mask,
-            np.where(wind_dir_0_90, val_on,
-            np.where(wind_dir_90_180, val_off,
-            0.0))
-        )
-    out["wind_factor"] = wind_factor
-
-    # lake level factor
-    if "lake_level_delta_in" in df.columns:
-        d = df["lake_level_delta_in"].astype(float)
-
-        out["lake_level_factor"] = np.select(
-            [
-                d > 3.0,
-                (d >= -6.0) & (d <= 3.0),
-                (d >= -11.0) & (d < -6.0),
-                d < -11.0,
-            ],
-            [-0.5, 0.0, 1.0, 2.0],
-            default=0.0,
-        ).astype(float)
-    else:
-        out["lake_level_factor"] = 0.0
-
+    #Wind speed factor
+    ws = df["wind_speed_ms"].astype(float)
+    out["wind_factor"] = np.select(
+        [
+            (ws >= 0.0) & (ws < 2.0),
+            (ws >= 2.0) & (ws < 5.0),
+            (ws >= 5.0) & (ws < 8.0),
+            (ws >= 8.0) & (ws < 12.0),
+            (ws >= 12.0),
+        ],
+        [0.0, 1.0, 2.0, 3.0, 4.0],
+        default=0.0,
+    ).astype(float)
+    
     #Make a prediction based on the factor summation
     out["total_score"] = (
         out["wave_factor"]
+        + out["max_wave_factor"]
         + out["period_factor"]
         + out["wind_factor"]
-        + out["lake_level_factor"]
     )
 
-    out["risk_level"] = np.where(
-        out["total_score"] < 4, "Low",
-        np.where(out["total_score"] <= 7, "Moderate", "High")
+    out["risk_level"] = np.select(
+        [
+            out["total_score"] < 3,
+            (out["total_score"] >= 3) & (out["total_score"] < 7),
+            (out["total_score"] >= 7) & (out["total_score"] <= 11),
+            out["total_score"] > 11,
+        ],
+        ["Low", "Moderate", "High", "Extreme"],
+        default="Low",
     )
 
     return out
-
-    
-

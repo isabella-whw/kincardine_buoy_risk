@@ -15,9 +15,6 @@ from config import (
     ONSHORE_DEG,
     ALERT_STALE_MINUTES,
     logger,
-    TOBERMORY_STATION_ID,
-    TOBERMORY_NORMAL_LEVEL_M,
-    TOBERMORY_LOOKBACK_HOURS,
 )
 from helper import (
     fmt,
@@ -30,23 +27,33 @@ from helper import (
 )
 from risk_predict import pred_haz
 from noaa import (
-    fetch_ndbc_latest_df,
+    fetch_ndbc_recent_df,
     build_datetime_utc,
     add_month_hour_decimal,
     ensure_dir_sin_cos,
 )
 from email_alert import send_email_smtp, should_send_alert
-from tobermory import last_completed_hour_tobermory_min
 from swimsmart import send_prediction_to_swimsmart
 
 # Run one end-to-end prediction cycle and return output document.
 def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, dict | None]:
     # Fetch latest NOAA observation and build UTC datetime
-    df_raw = fetch_ndbc_latest_df(station_id)
+    df_raw = fetch_ndbc_recent_df(station_id)
     df = build_datetime_utc(df_raw)
+    df = df.sort_values("datetime").reset_index(drop=True)
+    df = df.set_index("datetime")
+    df["max_wave_height_12h_m"] = (
+        df["WVHT"]
+        .astype(float)
+        .rolling("12h", min_periods=1)
+        .max()
+    )
+    df = df.reset_index()
+    latest_row = df.iloc[[-1]].reset_index(drop=True)
+    obs_utc_peek = latest_row.loc[0, "datetime"]
 
     # Check if observation is stale
-    obs_utc_peek = df.loc[0, "datetime"]
+    obs_utc_peek = latest_row.loc[0, "datetime"]
     age_minutes = (datetime.now(timezone.utc) - obs_utc_peek).total_seconds() / 60.0
     if age_minutes > ALERT_STALE_MINUTES:
         ok, last_doc_mem = should_send_alert("stale_data", last_doc_mem)
@@ -65,9 +72,9 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
                 logger.exception("Failed to send stale data alert email")
 
     # Add time features and direction sin/cos features for ML predictors
-    df = add_month_hour_decimal(df)
-    df = ensure_dir_sin_cos(df, "WDIR", "WDIRs", "WDIRc")
-    df = ensure_dir_sin_cos(df, "MWD", "MWDs", "MWDc")
+    latest_row = add_month_hour_decimal(latest_row)
+    latest_row = ensure_dir_sin_cos(latest_row, "WDIR", "WDIRs", "WDIRc")
+    latest_row = ensure_dir_sin_cos(latest_row, "MWD", "MWDs", "MWDc")
 
     # Load models and generate predictions
     preds: dict[str, float] = {}
@@ -75,24 +82,10 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
         path = os.path.join(PICKLE_DIR, fname)
         model = load_model(path)
         if isinstance(model, dict) and ("model_sin" in model) and ("model_cos" in model):
-            preds[out_col] = predict_from_bundle(model, df)
+            preds[out_col] = predict_from_bundle(model, latest_row)
         else:
-            preds[out_col] = predict_scalar_model(model, df)
+            preds[out_col] = predict_scalar_model(model, latest_row)
         safe_del(model)
-
-    # Tobermory water level
-    try:
-        water_level_min_m = last_completed_hour_tobermory_min(
-            TOBERMORY_STATION_ID,
-            lookback_hours=TOBERMORY_LOOKBACK_HOURS,
-        )
-        lake_level_delta_in = (
-            water_level_min_m - TOBERMORY_NORMAL_LEVEL_M
-        ) / 0.0254
-    except Exception:
-        logger.exception("Tobermory fetch failed; lake factor set to 0")
-        water_level_min_m = None
-        lake_level_delta_in = None
 
     # Prepare inputs for hazard scoring
     haz_in = pd.DataFrame([{
@@ -101,7 +94,7 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
         "wave_period_s": preds["wave_period_s"],
         "wind_speed_ms": preds["wind_speed_ms"],
         "wind_dir_deg": preds["wind_dir_deg"],
-        "lake_level_delta_in": lake_level_delta_in,
+        "max_wave_height_12h_m": float(latest_row.loc[0, "max_wave_height_12h_m"]),
     }])
 
     haz_in["wave_dir_deg"] = np.abs(circ_diff_deg(ONSHORE_DEG, haz_in["wave_dir_deg"]))
@@ -111,7 +104,7 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
     haz_out = pred_haz(haz_in).iloc[0].to_dict()
 
     # Build output document
-    obs_utc = df.loc[0, "datetime"]
+    obs_utc = latest_row.loc[0, "datetime"]
     obs_tor = obs_utc.astimezone(TORONTO_TZ)
     ing_utc = datetime.now(timezone.utc)
     ing_tor = ing_utc.astimezone(TORONTO_TZ)
@@ -127,14 +120,13 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
         "wave_period_s": float(preds["wave_period_s"]),
         "wind_speed_ms": float(preds["wind_speed_ms"]),
         "wind_dir_deg": float(haz_in.loc[0, "wind_dir_deg"]),
+        "max_wave_height_12h_m": float(haz_in.loc[0, "max_wave_height_12h_m"]),
         "wave_factor": float(haz_out["wave_factor"]),
+        "max_wave_factor": float(haz_out["max_wave_factor"]),
         "period_factor": float(haz_out["period_factor"]),
         "wind_factor": float(haz_out["wind_factor"]),
         "total_score": float(haz_out["total_score"]),
         "risk_level": str(haz_out["risk_level"]),
-        "tobermory_m": float(water_level_min_m) if water_level_min_m is not None else None,
-        "tobermory_in": float(lake_level_delta_in) if lake_level_delta_in is not None else None,
-        "lake_level_factor": float(haz_out.get("lake_level_factor", 0.0)),
     }
 
     try:

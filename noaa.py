@@ -28,6 +28,26 @@ def fetch_ndbc_latest_df(station_id: str) -> pd.DataFrame:
         raise RuntimeError("No data rows in NDBC response")
     return df.iloc[[0]].copy()
 
+def fetch_ndbc_recent_df(station_id: str) -> pd.DataFrame:
+    url = f"https://www.ndbc.noaa.gov/data/realtime2/{station_id}.txt"
+    r = requests.get(url, timeout=20)
+    r.raise_for_status()
+    text = r.text
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    if len(lines) < 3:
+        raise RuntimeError("NDBC response too short / malformed")
+    header = lines[0].lstrip("#").strip().split()
+    data_lines = lines[2:]
+    df = pd.read_csv(
+        StringIO("\n".join(data_lines)),
+        sep=r"\s+",
+        names=header,
+        na_values=["MM"],
+    )
+    if df.empty:
+        raise RuntimeError("No data rows in NDBC response")
+    return df.copy()
+
 # Construct UTC datetime column from NDBC date fields.
 def build_datetime_utc(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()

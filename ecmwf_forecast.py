@@ -135,7 +135,6 @@ def fetch_ecmwf_forecast_df(
 ) -> pd.DataFrame:
     weather_df = fetch_weather_df(latitude, longitude, forecast_days)
     marine_df = fetch_marine_df(latitude, longitude, forecast_days)
-
     forecast_df = (
         pd.merge(
             weather_df.drop(columns=["time_local"]),
@@ -155,7 +154,6 @@ def fetch_ecmwf_forecast_df(
     )
     forecast_df["retrieved_at_utc"] = retrieved_at_utc
     forecast_df = add_ecmwf_hazard(forecast_df)
-
     return forecast_df
 
 def add_ecmwf_hazard(df: pd.DataFrame) -> pd.DataFrame:
@@ -170,15 +168,20 @@ def add_ecmwf_hazard(df: pd.DataFrame) -> pd.DataFrame:
             "wind_dir_deg": np.abs(circ_diff_deg(ONSHORE_DEG, out["wind_direction_10m_deg"].astype(float))),
         }
     )
-
+    haz_in["max_wave_height_12h_m"] = (
+        haz_in["wave_height_m"]
+        .rolling(12, min_periods=1)
+        .max()
+    )
     haz_out = pred_haz(haz_in)
     out["wave_dir_deg"] = haz_in["wave_dir_deg"]
     out["wind_speed_ms"] = haz_in["wind_speed_ms"]
     out["wind_dir_deg"] = haz_in["wind_dir_deg"]
+    out["max_wave_height_12h_m"] = haz_in["max_wave_height_12h_m"]
     out["wave_factor"] = haz_out["wave_factor"]
+    out["max_wave_factor"] = haz_out["max_wave_factor"]
     out["period_factor"] = haz_out["period_factor"]
     out["wind_factor"] = haz_out["wind_factor"]
-    out["lake_level_factor"] = haz_out.get("lake_level_factor", 0.0)
     out["total_score"] = haz_out["total_score"]
     out["risk_level"] = haz_out["risk_level"]
 
@@ -243,10 +246,11 @@ def build_latest_ecmwf_doc_from_df(df: pd.DataFrame) -> dict:
         "wave_period_s": float(row["wave_period_s"]),
         "wind_speed_ms": float(row["wind_speed_ms"]),
         "wind_dir_deg": float(row["wind_dir_deg"]),
+        "max_wave_height_12h_m": float(row["max_wave_height_12h_m"]),
         "wave_factor": float(row["wave_factor"]),
+        "max_wave_factor": float(row["max_wave_factor"]),
         "period_factor": float(row["period_factor"]),
         "wind_factor": float(row["wind_factor"]),
-        "lake_level_factor": float(row.get("lake_level_factor", 0.0)),
         "total_score": float(row["total_score"]),
         "risk_level": str(row["risk_level"]),
     }
