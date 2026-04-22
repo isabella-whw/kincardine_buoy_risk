@@ -56,15 +56,17 @@ kincardine_buoy_risk/
 
 ### Clone the repository
 
+```bash
 git clone https://github.com/isabella-whw/kincardine_buoy_risk.git
 
 cd kincardine_buoy_risk
-
+```
 
 ### Install dependencies
 
+```bash
 pip install -r requirements.txt
-
+```
 
 ---
 
@@ -154,12 +156,9 @@ If model files are required for deployment:
 
 After modifying code or models:
 
-
-gcloud run deploy kincardine-test
---source .
---region us-central1
---allow-unauthenticated
-
+```bash
+gcloud run deploy kincardine-test --source . --region us-central1 --allow-unauthenticated
+```
 
 This updates the live service.
 
