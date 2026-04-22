@@ -88,12 +88,12 @@ def build_app() -> FastAPI:
             "items": items,
         }
     
+    # Fetch ECMWF forecast data and store it in Firestore.
     @app.post("/run_forecast_once")
     def run_forecast_once():
         try:
             forecast_snapshot = build_forecast_snapshot()
             write_forecast(forecast_snapshot)
-
             return {
                 "ok": True,
                 "forecast_retrieved_at_utc": forecast_snapshot["retrieved_at_utc"],
@@ -106,7 +106,8 @@ def build_app() -> FastAPI:
                 status_code=500,
                 content={"ok": False, "error": repr(e)},
             )
-            
+    
+    # Return the latest ECMWF-based prediction.
     @app.get("/latest_ecmwf")
     def latest_ecmwf():
         doc = read_latest_ecmwf("ecmwf")
@@ -114,13 +115,13 @@ def build_app() -> FastAPI:
             raise HTTPException(status_code=404, detail="No ECMWF prediction stored yet")
         return doc
 
+    # Run hazard prediction using ECMWF forecast data.
     @app.post("/run_ecmwf_once", include_in_schema=False)
     def run_ecmwf_once():
         try:
             df = fetch_ecmwf_forecast_df()
             latest_ecmwf_doc = build_latest_ecmwf_doc_from_df(df)
             write_latest_ecmwf(latest_ecmwf_doc)
-
             return {
                 "ok": True,
                 "timestamp_utc": latest_ecmwf_doc["timestamp_utc"],

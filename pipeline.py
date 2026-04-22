@@ -42,6 +42,8 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
     df = build_datetime_utc(df_raw)
     df = df.sort_values("datetime").reset_index(drop=True)
     df = df.set_index("datetime")
+
+    # Compute rolling 12-hour max wave height.
     df["max_wave_height_12h_m"] = (
         df["WVHT"]
         .astype(float)
@@ -50,9 +52,8 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
     )
     df = df.reset_index()
     latest_row = df.iloc[[-1]].reset_index(drop=True)
-    obs_utc_peek = latest_row.loc[0, "datetime"]
 
-    # Check if observation is stale
+    # Check if latest observation is stale and trigger alert if needed.
     obs_utc_peek = latest_row.loc[0, "datetime"]
     age_minutes = (datetime.now(timezone.utc) - obs_utc_peek).total_seconds() / 60.0
     if age_minutes > ALERT_STALE_MINUTES:
@@ -76,7 +77,7 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
     latest_row = ensure_dir_sin_cos(latest_row, "WDIR", "WDIRs", "WDIRc")
     latest_row = ensure_dir_sin_cos(latest_row, "MWD", "MWDs", "MWDc")
 
-    # Load models and generate predictions
+    # Run ML models to generate predicted wave and wind conditions.
     preds: dict[str, float] = {}
     for out_col, fname in MODEL_FILES.items():
         path = os.path.join(PICKLE_DIR, fname)
@@ -97,6 +98,7 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
         "max_wave_height_12h_m": float(latest_row.loc[0, "max_wave_height_12h_m"]),
     }])
 
+    # Convert directions relative to shoreline (onshore angle).
     haz_in["wave_dir_deg"] = np.abs(circ_diff_deg(ONSHORE_DEG, haz_in["wave_dir_deg"]))
     haz_in["wind_dir_deg"] = np.abs(circ_diff_deg(ONSHORE_DEG, haz_in["wind_dir_deg"]))
 
@@ -108,7 +110,6 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
     obs_tor = obs_utc.astimezone(TORONTO_TZ)
     ing_utc = datetime.now(timezone.utc)
     ing_tor = ing_utc.astimezone(TORONTO_TZ)
-
     doc = {
         "recorded_at_utc": fmt(ing_utc),
         "recorded_at_toronto": fmt(ing_tor),
@@ -129,6 +130,7 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
         "risk_level": str(haz_out["risk_level"]),
     }
 
+    # Send prediction to SwimSmart device.
     try:
         swimsmart_results = send_prediction_to_swimsmart(doc)
         doc["swimsmart_sent"] = bool(swimsmart_results)

@@ -156,9 +156,9 @@ def fetch_ecmwf_forecast_df(
     forecast_df = add_ecmwf_hazard(forecast_df)
     return forecast_df
 
+# Compute hazard scores for ECMWF forecast data.
 def add_ecmwf_hazard(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
-
     haz_in = pd.DataFrame(
         {
             "wave_height_m": out["wave_height_m"].astype(float),
@@ -184,7 +184,6 @@ def add_ecmwf_hazard(df: pd.DataFrame) -> pd.DataFrame:
     out["wind_factor"] = haz_out["wind_factor"]
     out["total_score"] = haz_out["total_score"]
     out["risk_level"] = haz_out["risk_level"]
-
     return out
 
 # Convert dataframe to hourly record format.
@@ -227,14 +226,13 @@ def build_forecast_snapshot(
     }
     return snapshot
 
+# Build full forecast snapshot (hourly and 3-hourly).
 def build_latest_ecmwf_doc_from_df(df: pd.DataFrame) -> dict:
     if df.empty:
         raise RuntimeError("ECMWF forecast dataframe is empty after filtering")
-
     row = df.iloc[0]
     ing_utc = datetime.now(timezone.utc)
     ing_tor = ing_utc.astimezone(TORONTO_TZ)
-
     return {
         "recorded_at_utc": fmt(ing_utc),
         "recorded_at_toronto": fmt(ing_tor),
@@ -255,6 +253,7 @@ def build_latest_ecmwf_doc_from_df(df: pd.DataFrame) -> dict:
         "risk_level": str(row["risk_level"]),
     }
 
+# Build both forecast snapshot and latest prediction.
 def build_forecast_products(
     latitude: float = LAT,
     longitude: float = LON,
@@ -263,10 +262,8 @@ def build_forecast_products(
     df = fetch_ecmwf_forecast_df(latitude, longitude, forecast_days)
     if df.empty:
         raise RuntimeError("ECMWF forecast dataframe is empty after filtering")
-
     retrieved_at_utc = df["retrieved_at_utc"].iloc[0]
     retrieved_at_toronto = retrieved_at_utc.tz_localize("UTC").tz_convert(TORONTO_TZ)
-
     snapshot = {
         "retrieved_at_utc": retrieved_at_utc.strftime("%Y-%m-%d %H:%M:%S"),
         "retrieved_at_toronto": retrieved_at_toronto.strftime("%Y-%m-%d %H:%M:%S"),

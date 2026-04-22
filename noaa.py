@@ -1,6 +1,6 @@
 # noaa.py
-# Retrieves and preprocesses real-time NOAA NDBC buoy observations.
-# Converts raw text data into structured pandas DataFrame format.
+# Fetch the latest observation row from NOAA NDBC station.
+# Fetch recent observation rows from NOAA NDBC station.
 
 import requests
 import pandas as pd
@@ -28,6 +28,7 @@ def fetch_ndbc_latest_df(station_id: str) -> pd.DataFrame:
         raise RuntimeError("No data rows in NDBC response")
     return df.iloc[[0]].copy()
 
+# Fetch recent observation rows from NOAA NDBC station.
 def fetch_ndbc_recent_df(station_id: str) -> pd.DataFrame:
     url = f"https://www.ndbc.noaa.gov/data/realtime2/{station_id}.txt"
     r = requests.get(url, timeout=20)

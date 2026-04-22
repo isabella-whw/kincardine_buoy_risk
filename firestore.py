@@ -82,7 +82,7 @@ def read_history_range(
 def _forecast_row_doc_id(row: dict) -> str:
     return str(row["time_utc"]).replace(" ", "_").replace(":", "-")
 
-# Store forecast snapshot and associated hourly / 3-hourly records.
+# Store forecast snapshot and hourly / 3-hourly records.
 def write_forecast(snapshot: dict) -> None:
     if not USE_FIRESTORE:
         return
@@ -125,6 +125,7 @@ def write_forecast(snapshot: dict) -> None:
     if ops > 0:
         batch.commit()
 
+# Write latest ECMWF prediction and store a copy in history.
 def write_latest_ecmwf(doc: dict) -> None:
     if not USE_FIRESTORE:
         return
@@ -140,6 +141,7 @@ def write_latest_ecmwf(doc: dict) -> None:
         .document(hist_id) \
         .set(doc)
 
+# Retrieve latest ECMWF prediction.
 def read_latest_ecmwf(station_id: str) -> dict | None:
     if not USE_FIRESTORE:
         return None
