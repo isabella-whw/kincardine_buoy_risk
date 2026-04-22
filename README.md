@@ -122,6 +122,8 @@ Wind speed requires:
 
 df = pd.read_csv(os.path.join(BASE_DIR, "AllDat5_2023.csv"))
 
+Note: Model training may take approximately 10 minutes depending on hardware.
+
 
 ### Notes on Model Files and Git
 
