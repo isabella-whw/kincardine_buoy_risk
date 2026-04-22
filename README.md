@@ -30,7 +30,7 @@ Both pipelines use the same hazard model.
 
 ## Project Structure
 
-
+```text
 kincardine_buoy_risk/
 │
 ├── main.py
@@ -48,7 +48,7 @@ kincardine_buoy_risk/
 ├── prediction/
 ├── risk model/
 ├── survey/
-
+```
 
 ---
 
@@ -167,11 +167,11 @@ This updates the live service.
 
 ### 2. Manually Run Jobs
 
-
+```bash
 gcloud scheduler jobs run kincardine-hourly --location=us-central1
 gcloud scheduler jobs run ecmwf-forecast --location=us-central1
 gcloud scheduler jobs run ecmwf-hourly --location=us-central1
-
+```
 
 ---
 
