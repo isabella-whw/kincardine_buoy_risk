@@ -119,18 +119,31 @@ Wind speed requires:
 df = pd.read_csv(os.path.join(BASE_DIR, "AllDat5_2023.csv"))
 
 
----
+### Notes on Model Files and Git
 
-## Running Locally
+Model `.pkl` files are not tracked in Git by default.
 
-### Run one prediction
+Add the following to `.gitignore`:
 
-python -c "from pipeline import make_prediction; print(make_prediction('41049', None))"
+prediction/pickle/
+prediction/ERA5/pickle/
+*.pkl
 
 
-### Run API
+This prevents large model files from being uploaded to GitHub.
 
-uvicorn api:app --reload
+#### Important
+
+- Each user must provide their own `.pkl` files locally (by copying or training)
+- The system will not run without these files
+
+#### When Deploying
+
+If model files are required for deployment:
+
+1. Temporarily remove or comment out the `.gitignore` rules
+2. Deploy to Cloud Run
+3. Restore `.gitignore` afterward to avoid tracking models permanently
 
 
 ---
