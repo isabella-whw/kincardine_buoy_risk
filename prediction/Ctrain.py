@@ -35,14 +35,14 @@ def main():
         ["hour_decimal", "WDIRs", "WDIRc", "WSPD", "GST", "WVHT", "DPD", #Include the predictor variables in use
         "APD", "MWDs", "MWDc", "PRES", "ATMP", "WTMP", "DEWP"]
     )
-    # circular_responses = ["Ds", "Dc"] #Include the sin and cos components of the predicted variable
-    circular_responses = ["WDs", "WDc"] 
+    circular_responses = ["Ds", "Dc"] #Include the sin and cos components of the predicted variable
+    # circular_responses = ["WDs", "WDc"] 
 
     test_size = 0.2 #Split for testing set
     random_state = 42
     n_iter_bayes = 50 #Number of iterations
-    # output_pdf = "circ_report_WaveDirection.pdf" #Specify output pdf for review
-    output_pdf = "circ_report_WindDirection.pdf" 
+    output_pdf = "circ_report_WaveDirection.pdf" #Specify output pdf for review
+    # output_pdf = "circ_report_WindDirection.pdf" 
 
     PICKLE_DIR = "pickle"
     os.makedirs(PICKLE_DIR, exist_ok=True)
@@ -119,8 +119,8 @@ def main():
     model_sin = train_model(X_train, y_train_sin)
     model_cos = train_model(X_train, y_train_cos)
 
-    # pickle_path = os.path.join(PICKLE_DIR, "WaveDirection.pkl")
-    pickle_path = os.path.join(PICKLE_DIR, "WindDirection.pkl")
+    pickle_path = os.path.join(PICKLE_DIR, "WaveDirection.pkl")
+    # pickle_path = os.path.join(PICKLE_DIR, "WindDirection.pkl")
 
     with open(pickle_path, "wb") as f:
         pickle.dump(

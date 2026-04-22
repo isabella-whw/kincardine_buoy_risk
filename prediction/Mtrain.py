@@ -34,16 +34,16 @@ def main():
         ["hour_decimal", "WDIRs", "WDIRc", "WSPD", "GST", "WVHT", "DPD", #Include the predictor variables in use
         "APD", "MWDs", "MWDc", "PRES", "ATMP", "WTMP", "DEWP"]
     )
-    # response = ["H"] #Include the response variable
+    response = ["H"] #Include the response variable
     # response = ["T"]
-    response = ["WS"] #Use AllDat5_2023.csv as input
+    # response = ["WS"] #Use AllDat5_2023.csv as input
 
     test_size = 0.2 #Split for testing set
     random_state = 42
     n_iter_bayes = 50 #Number of iterations
-    # output_pdf = "report_WaveHeight.pdf" #Specify output pdf for review
+    output_pdf = "report_WaveHeight.pdf" #Specify output pdf for review
     # output_pdf = "report_WavePeriod.pdf"
-    output_pdf = "report_WindSpeed.pdf"
+    # output_pdf = "report_WindSpeed.pdf"
 
     PICKLE_DIR = "pickle"
     os.makedirs(PICKLE_DIR, exist_ok=True)
@@ -113,9 +113,9 @@ def main():
     # --------------------------------------------------    
     model = train_model(X_train, y_train)
 
-    # pickle_path = os.path.join(PICKLE_DIR, "WaveHeight.pkl")
+    pickle_path = os.path.join(PICKLE_DIR, "WaveHeight.pkl")
     # pickle_path = os.path.join(PICKLE_DIR, "WavePeriod.pkl")
-    pickle_path = os.path.join(PICKLE_DIR, "WindSpeed.pkl")
+    # pickle_path = os.path.join(PICKLE_DIR, "WindSpeed.pkl")
 
     with open(pickle_path, "wb") as f:
         pickle.dump(model, f)
