@@ -84,12 +84,13 @@ PICKLE_DIR = "./prediction/pickle"
 
 ### Required Files
 
+```text
 WaveHeight.pkl
 WavePeriod.pkl
 WindSpeed.pkl
 WaveDirection.pkl
 WindDirection.pkl
-
+```
 
 ---
 
@@ -108,9 +109,10 @@ prediction/pickle/
 
 Run:
 
+```bash
 python Mtrain.py
 python Ctrain.py
-
+```
 
 Datasets:
 - `AllDat5.csv` → wave height, period, directions
