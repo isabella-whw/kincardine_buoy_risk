@@ -9,8 +9,22 @@ from zoneinfo import ZoneInfo
 # Use uvicorn logger so logs appear in Cloud Run output
 logger = logging.getLogger("uvicorn.error")
 
-# Default buoy station ID
+# Active SwimSmart source: "noaa" or "ecmwf"
+SWIMSMART_SOURCE = os.getenv("SWIMSMART_SOURCE", "noaa")
+
+# Default NOAA buoy station ID
 STATION_ID_DEFAULT = "41049"
+
+# ECMWF weather and marine API location
+LAT = 44.25
+LON = -82.5
+
+# Open-Meteo API URLs for ECMWF weather and marine data
+WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
+MARINE_URL = "https://marine-api.open-meteo.com/v1/marine"
+
+# Local timezone used for ECMWF API timestamps
+LOCAL_TZ = "America/Toronto"
 
 # Directory containing trained ML model pickle files
 PICKLE_DIR = os.path.join(".", "prediction", "pickle")
@@ -54,15 +68,6 @@ ALERT_STALE_MINUTES = 90
 
 # Minimum interval (minutes) between repeated alert emails
 ALERT_THROTTLE_MINUTES = 60
-
-# Tobermory water level config
-TOBERMORY_STATION_ID = "5cebf1e43d0f4a073c4bc39d"
-
-# Normal lake level baseline (meters)
-TOBERMORY_NORMAL_LEVEL_M = 0.0
-
-# Hours of history to request (must be >= 2)
-TOBERMORY_LOOKBACK_HOURS = 2
 
 # SwimSmart / Digi Remote Manager config
 SWIMSMART_ENABLED = True

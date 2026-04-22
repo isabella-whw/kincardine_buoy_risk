@@ -4,7 +4,7 @@
 #Ontario, including high wave conditions and possible rip current development. Inputs
 #include wave height, wave direction, wave period, wind speed, and wind direction. Each
 #input is assigned a numerical factor, and the recommendation for low (<4), modereate
-#(4 - 7), or high (>7) risks levels are determined by the summation of all factors. This
+#(4 - 7), or high (>=7) risks levels are determined by the summation of all factors. This
 #tool uses a modified version of the Meadows (2011) Great Lakes Rip Current Checklist
 #(GLRCC). Future work could use alternative methods to identify rip currents and other
 #hazards on-site to further modify these values.
@@ -19,8 +19,8 @@ import numpy as np
 
 # --------------------------------------------------------------------------------------
 #Vectorized hazard level predictions. (Note: Input is a pandas data frame, and includes
-#wave height (m), wave direction (o), wave period (s), wind speed (m/s), and wind
-#direction (o)
+# wave_height_m, wave_dir_deg, wave_period_s, wind_speed_ms, wind_dir_deg, and 
+# max_wave_height_12h_m.
 
 def pred_haz(df):
 
@@ -121,10 +121,9 @@ def pred_haz(df):
         [
             out["total_score"] < 3,
             (out["total_score"] >= 3) & (out["total_score"] < 7),
-            (out["total_score"] >= 7) & (out["total_score"] <= 11),
-            out["total_score"] > 11,
+            out["total_score"] >= 7
         ],
-        ["Low", "Moderate", "High", "Extreme"],
+        ["Low", "Moderate", "High"],
         default="Low",
     )
     return out

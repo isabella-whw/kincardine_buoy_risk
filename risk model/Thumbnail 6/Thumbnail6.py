@@ -26,12 +26,12 @@ def pred_haz(df):
 
     out = pd.DataFrame(index=df.index)
 
-    #Wave direction classes for on-shore and oblique
+    # Classify wave direction relative to shoreline.
     wave_dir_0_30 = df["wave_dir_deg"].between(0, 30, inclusive="both")
     wave_dir_30_60 = (df["wave_dir_deg"] > 30) & (df["wave_dir_deg"] <= 60)
     wave_dir_60_90 = (df["wave_dir_deg"] > 60) & (df["wave_dir_deg"] <= 180)
 
-    #Wave height bins, depending on direction
+    # Define wave height bins and corresponding factors by direction.
     h = df["wave_height_m"].astype(float)
     wave_factor = pd.Series(0.0, index=df.index)
     wave_height_bins = [
@@ -45,7 +45,7 @@ def pred_haz(df):
         (h >= 2.0,                 7.0, 6.5, 6.0),
     ]
     
-    #Computes the wave height factor for a given direction
+    # Compute wave factor based on height and direction.
     for mask, val_0_30, val_30_60, val_60_90 in wave_height_bins:
         wave_factor = wave_factor.where(
             ~mask,
@@ -59,7 +59,7 @@ def pred_haz(df):
         )
     out["wave_factor"] = wave_factor
 
-    # Max wave height over past 12 hours factor
+    # Compute max wave height (12h) factor.
     mh = df["max_wave_height_12h_m"].astype(float)
     max_wave_dir_0_30 = df["wave_dir_deg"].between(0, 30, inclusive="both")
     max_wave_dir_over_30 = df["wave_dir_deg"] > 30
@@ -76,11 +76,11 @@ def pred_haz(df):
         default=0.0,
     ).astype(float)
 
-    #Defines wave period bins, depending on height
+    # Define wave period factor based on wave height.
     wp = df["wave_period_s"].astype(float)
     small_wave = h <= 1.25
 
-    #Computes the wave period factor for a given height
+    # Compute wave period factor.
     out["period_factor"] = np.select(
         [
             (wp >= 4.5) & (wp < 5.5) & small_wave,
@@ -94,7 +94,7 @@ def pred_haz(df):
         default=0.0,
     ).astype(float)
 
-    #Wind speed factor
+    # Compute wind speed factor.
     ws = df["wind_speed_ms"].astype(float)
     out["wind_factor"] = np.select(
         [
@@ -108,7 +108,7 @@ def pred_haz(df):
         default=0.0,
     ).astype(float)
     
-    #Make a prediction based on the factor summation
+    # Compute total hazard score.
     out["total_score"] = (
         out["wave_factor"]
         + out["max_wave_factor"]
@@ -116,18 +116,14 @@ def pred_haz(df):
         + out["wind_factor"]
     )
 
+    # Classify risk level from total score.
     out["risk_level"] = np.select(
         [
             out["total_score"] < 3,
             (out["total_score"] >= 3) & (out["total_score"] < 7),
-            (out["total_score"] >= 7) & (out["total_score"] <= 11),
-            out["total_score"] > 11,
+            out["total_score"] >= 7
         ],
-        ["Low", "Moderate", "High", "Extreme"],
+        ["Low", "Moderate", "High"],
         default="Low",
     )
-
     return out
-
-
-

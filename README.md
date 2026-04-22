@@ -2,11 +2,13 @@
 
 This project is a real-time hazard prediction system for Kincardine Beach (Lake Huron, Ontario).
 
-It uses offshore buoy observations and forecast data to:
+It uses offshore buoy observations and ECMWF forecast data to:
 - Predict nearshore wave and wind conditions using machine learning models
 - Compute a swimmer hazard score
-- Classify risk levels (Low / Moderate / High / Extreme)
+- Classify risk levels (Low / Moderate / High)
 - Store results and optionally send outputs to external systems (e.g., SwimSmart)
+
+The system supports manual switching between NOAA and ECMWF for SwimSmart output.
 
 ---
 
@@ -18,13 +20,36 @@ There are two main pipelines:
 - Uses NOAA NDBC buoy data (station 41049)
 - Runs hourly
 - Produces current hazard conditions
+- Writes results to `predictions`
 
-### 2. Forecast Pipeline (ECMWF)
+### 2. Backup / Parallel Pipeline (ECMWF)
 - Uses Open-Meteo ECMWF weather and marine APIs
-- Produces hourly and 3-hourly forecasts
-- Computes hazard for future conditions
+- Runs hourly
+- Uses the current ECMWF hour as model input
+- Computes hazard conditions using the same hazard model
+- Writes results to `predictions_ecmwf`
 
-Both pipelines use the same hazard model.
+Both pipelines can run at the same time.
+
+Only one source is sent to SwimSmart at a time, controlled manually by `SWIMSMART_SOURCE` in `config.py`.
+
+---
+
+## Manual Source Switching for SwimSmart
+
+The active SwimSmart source is controlled by:
+
+`SWIMSMART_SOURCE = "noaa"` or `SWIMSMART_SOURCE = "ecmwf"`
+
+Defined in `config.py`.
+
+### NOAA active
+```python
+SWIMSMART_SOURCE = "noaa"
+```
+NOAA predictions are still generated
+ECMWF predictions are still generated
+Only NOAA is sent to SwimSmart
 
 ---
 
@@ -172,7 +197,6 @@ This updates the live service.
 
 ```bash
 gcloud scheduler jobs run kincardine-hourly --location=us-central1
-gcloud scheduler jobs run ecmwf-forecast --location=us-central1
 gcloud scheduler jobs run ecmwf-hourly --location=us-central1
 ```
 
@@ -182,9 +206,6 @@ gcloud scheduler jobs run ecmwf-hourly --location=us-central1
 
 - `kincardine-hourly`  
   Runs NOAA real-time prediction → updates `predictions`
-
-- `ecmwf-forecast`  
-  Fetches forecast data → updates `forecast`
 
 - `ecmwf-hourly`  
   Runs forecast hazard model → updates `predictions_ecmwf`
@@ -229,12 +250,6 @@ predictions/{station_id}/history/{timestamp}
 predictions_ecmwf/ecmwf/history/{timestamp}
 
 
-##### forecast
-
-forecast/{run_timestamp}/hourly
-forecast/{run_timestamp}/three_hourly
-
-
 ##### alerts
 
 alerts/{alert_id}
@@ -261,6 +276,8 @@ Run:
 
 POST /run_once
 GET /latest
+POST /run_ecmwf_once
+GET /latest_ecmwf
 
 
 ---
@@ -269,12 +286,15 @@ GET /latest
 
 1. Modify code or models  
 2. Deploy to Cloud Run  
-3. Run scheduler jobs manually  
-4. Check:
+3. Make sure both scheduler jobs run:
+   - `kincardine-hourly`
+   - `ecmwf-hourly`
+4. Set `SWIMSMART_SOURCE` manually to choose the active SwimSmart source
+5. Check:
    - Scheduler → success
    - Logs → no errors
    - Firestore → data updated  
-5. Validate results via API  
+6. Validate results via API  
 
 ---
 
@@ -290,8 +310,7 @@ Risk Levels:
 |------|-----|
 | < 3 | Low |
 | 3–7 | Moderate |
-| 7–11 | High |
-| > 11 | Extreme |
+| >= 7 | High |
 
 ---
 
@@ -300,4 +319,6 @@ Risk Levels:
 - Directions are converted relative to shoreline (315°)
 - Rolling 12-hour wave height captures sustained conditions
 - Models trained using NOAA and ERA5 datasets
-- Firestore stores all outputs and history
+- NOAA and ECMWF pipelines can run in parallel
+- SwimSmart output is controlled manually using `SWIMSMART_SOURCE`
+- Firestore stores both latest outputs and history

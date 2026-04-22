@@ -1,8 +1,6 @@
 # firestore.py
-# Handles Firestore database interactions for storing and retrieving predictions.
-# Supports latest prediction storage, historical query operations, and forecast storage.
-
-import pandas as pd
+# Handles Firestore database interactions for storing and retrieving NOAA and ECMWF predictions.
+# Supports latest prediction storage and historical query operations.
 
 from functools import lru_cache
 from google.cloud import firestore
@@ -21,7 +19,7 @@ def get_db():
 def history_doc_id(doc: dict) -> str:
     return doc["recorded_at_toronto"].replace(" ", "_").replace(":", "-")
 
-# Write latest prediction and store a copy in history.
+# Write latest NOAA-based prediction and store a copy in history.
 def write_latest(doc: dict) -> None:
     if not USE_FIRESTORE:
         return
@@ -37,7 +35,7 @@ def write_latest(doc: dict) -> None:
         .document(hist_id) \
         .set(doc)
 
-# Retrieve latest prediction (Firestore or in-memory fallback).
+# Retrieve latest NOAA-based prediction (Firestore or in-memory fallback).
 def read_latest(station_id: str, last_doc_mem: dict | None) -> dict | None:
     if not USE_FIRESTORE:
         if last_doc_mem and last_doc_mem.get("station_id") == station_id:
@@ -55,7 +53,7 @@ def date_to_range_strings(start: date, end: date) -> tuple[str, str]:
     end_s = f"{end.isoformat()} 23:59:59"
     return start_s, end_s
 
-# Read historical predictions within a date range.
+# Read historical NOAA-based predictions within a date range.
 def read_history_range(
     station_id: str,
     start_dt_s: str,
@@ -77,53 +75,6 @@ def read_history_range(
         .limit(limit)
     )
     return [d.to_dict() for d in q.stream()]
-
-# Generate document ID for forecast rows.
-def _forecast_row_doc_id(row: dict) -> str:
-    return str(row["time_utc"]).replace(" ", "_").replace(":", "-")
-
-# Store forecast snapshot and hourly / 3-hourly records.
-def write_forecast(snapshot: dict) -> None:
-    if not USE_FIRESTORE:
-        return
-    db = get_db()
-    if db is None:
-        return
-    retrieved_at_toronto = (
-        pd.to_datetime(snapshot["retrieved_at_utc"], utc=True)
-        .tz_convert("America/Toronto")
-        .strftime("%Y-%m-%d_%H-%M-%S")
-    )
-    run_id = retrieved_at_toronto
-    meta = {
-        "retrieved_at_utc": snapshot["retrieved_at_utc"],
-        "latitude": snapshot["latitude"],
-        "longitude": snapshot["longitude"],
-        "hourly_count": snapshot["hourly_count"],
-        "three_hourly_count": snapshot["three_hourly_count"],
-    }
-    run_ref = db.collection("forecast").document(run_id)
-    run_ref.set(meta)
-    batch = db.batch()
-    ops = 0
-    for row in snapshot.get("hourly_records", []):
-        doc_id = _forecast_row_doc_id(row)
-        batch.set(run_ref.collection("hourly").document(doc_id), row)
-        ops += 1
-        if ops == 400:
-            batch.commit()
-            batch = db.batch()
-            ops = 0
-    for row in snapshot.get("three_hourly_records", []):
-        doc_id = _forecast_row_doc_id(row)
-        batch.set(run_ref.collection("three_hourly").document(doc_id), row)
-        ops += 1
-        if ops == 400:
-            batch.commit()
-            batch = db.batch()
-            ops = 0
-    if ops > 0:
-        batch.commit()
 
 # Write latest ECMWF prediction and store a copy in history.
 def write_latest_ecmwf(doc: dict) -> None:
