@@ -5,6 +5,7 @@ __pycache__/
 # Model files
 prediction/pickle/
 prediction/ERA5/pickle/
+prediction/No WTMP/pickle/
 *.pkl
 
 
