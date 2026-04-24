@@ -36,8 +36,8 @@ def predict_from_bundle(bundle: dict, df: pd.DataFrame) -> float:
     return float(reconstruct_angle(pred_s, pred_c)[0])
 
 # Predict scalar variable using trained model.
-def predict_scalar_model(model, df: pd.DataFrame) -> float:
-    feats = list(getattr(model, "feature_names_in_", DEFAULT_PREDICTORS))
+def predict_scalar_model(model, df: pd.DataFrame, default_predictors=None) -> float:
+    feats = list(getattr(model, "feature_names_in_", default_predictors or DEFAULT_PREDICTORS))
     X = df[feats].to_numpy(dtype=float, copy=False)
     return float(model.predict(X)[0])
 
