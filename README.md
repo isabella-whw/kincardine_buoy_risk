@@ -192,10 +192,12 @@ Add the following to `.gitignore`:
 
 This prevents large model files from being uploaded to GitHub.
 
+
 #### Important
 
 - Each user must provide their own `.pkl` files locally (by copying or training)
 - The system will not run without these files
+
 
 #### When Deploying
 
