@@ -55,7 +55,7 @@ def fetch_weather_df(latitude: float = LAT, longitude: float = LON) -> pd.DataFr
         "hourly": ",".join(WEATHER_VARS),
         "models": "ecmwf_ifs",
         "timezone": "auto",
-        "forecast_days": 1,
+        "forecast_days": 10,
         "wind_speed_unit": "ms",
     }
     data = _fetch_json(WEATHER_URL, params)
@@ -138,6 +138,7 @@ def build_ecmwf_ml_input_row(df: pd.DataFrame) -> tuple[pd.DataFrame, float]:
         "MWD": float(row["wave_direction_deg"]),
         "PRES": float(row["pressure_msl_hPa"]),
         "ATMP": float(row["temperature_2m_C"]),
+        "WTMP": np.nan,
         "DEWP": float(row["dew_point_2m_C"]),
     }])
     ml["WDIRs"] = np.sin(np.deg2rad(ml["WDIR"]))

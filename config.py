@@ -28,7 +28,6 @@ LOCAL_TZ = "America/Toronto"
 
 # Directory containing trained ML model pickle files
 PICKLE_DIR = os.path.join(".", "prediction", "pickle")
-PICKLE_DIR_NO_WTMP = os.path.join(".", "prediction", "No WTMP", "pickle")
 
 # Toggle Firestore usage
 USE_FIRESTORE = True
@@ -47,22 +46,11 @@ MODEL_FILES = {
     "wave_dir_deg": "WaveDirection.pkl",
     "wind_dir_deg": "WindDirection.pkl",
 }
-MODEL_FILES_NO_WTMP = {
-    "wave_height_m": "WaveHeight.pkl",
-    "wave_period_s": "WavePeriod.pkl",
-    "wind_speed_ms": "WindSpeed.pkl",
-    "wave_dir_deg": "WaveDirection.pkl",
-    "wind_dir_deg": "WindDirection.pkl",
-}
 
 # Default feature list expected by trained ML models
 DEFAULT_PREDICTORS = [
     "hour_decimal", "WDIRs", "WDIRc", "WSPD", "GST", "WVHT", "DPD",
     "APD", "MWDs", "MWDc", "PRES", "ATMP", "WTMP", "DEWP"
-]
-DEFAULT_PREDICTORS_NO_WTMP = [
-    "hour_decimal", "WDIRs", "WDIRc", "WSPD", "GST", "WVHT", "DPD",
-    "APD", "MWDs", "MWDc", "PRES", "ATMP", "DEWP"
 ]
 
 # Email recipient and sender

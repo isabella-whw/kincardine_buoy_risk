@@ -11,11 +11,7 @@ from config import (
     SWIMSMART_SOURCE,
     STATION_ID_DEFAULT,
     PICKLE_DIR,
-    PICKLE_DIR_NO_WTMP,
     MODEL_FILES,
-    MODEL_FILES_NO_WTMP,
-    DEFAULT_PREDICTORS,
-    DEFAULT_PREDICTORS_NO_WTMP,
     TORONTO_TZ,
     ONSHORE_DEG,
     ALERT_STALE_MINUTES,
@@ -42,20 +38,15 @@ from swimsmart import send_prediction_to_swimsmart
 from ecmwf_forecast import fetch_ecmwf_forecast_df, build_ecmwf_ml_input_row
 
 # Run all trained ML models for a single input row and return predictions.
-def _run_models(
-    feature_row: pd.DataFrame,
-    pickle_dir: str,
-    model_files: dict[str, str],
-    default_predictors: list[str],
-) -> dict[str, float]:
+def _run_models(feature_row: pd.DataFrame) -> dict[str, float]:
     preds: dict[str, float] = {}
-    for out_col, fname in model_files.items():
-        path = os.path.join(pickle_dir, fname)
+    for out_col, fname in MODEL_FILES.items():
+        path = os.path.join(PICKLE_DIR, fname)
         model = load_model(path)
         if isinstance(model, dict) and ("model_sin" in model) and ("model_cos" in model):
             preds[out_col] = predict_from_bundle(model, feature_row)
         else:
-            preds[out_col] = predict_scalar_model(model, feature_row, default_predictors)
+            preds[out_col] = predict_scalar_model(model, feature_row)
         safe_del(model)
     return preds
 
@@ -127,12 +118,7 @@ def _build_doc_from_prediction(
 def make_ecmwf_prediction(last_doc_mem: dict | None) -> tuple[dict, dict | None]:
     df_ecmwf = fetch_ecmwf_forecast_df()
     feature_row, max_wave_height_12h_m = build_ecmwf_ml_input_row(df_ecmwf)
-    preds = _run_models(
-        feature_row,
-        PICKLE_DIR_NO_WTMP,
-        MODEL_FILES_NO_WTMP,
-        DEFAULT_PREDICTORS_NO_WTMP,
-    )
+    preds = _run_models(feature_row)
     timestamp_utc = feature_row.loc[0, "datetime"]
     doc = _build_doc_from_prediction(
         timestamp_utc,
@@ -171,12 +157,7 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
     latest_row = add_month_hour_decimal(latest_row)
     latest_row = ensure_dir_sin_cos(latest_row, "WDIR", "WDIRs", "WDIRc")
     latest_row = ensure_dir_sin_cos(latest_row, "MWD", "MWDs", "MWDc")
-    preds = _run_models(
-        latest_row,
-        PICKLE_DIR,
-        MODEL_FILES,
-        DEFAULT_PREDICTORS,
-    )
+    preds = _run_models(latest_row)
     doc = _build_doc_from_prediction(
         latest_row.loc[0, "datetime"],
         station_id,
