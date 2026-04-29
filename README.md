@@ -56,7 +56,7 @@ Defined in `config.py`.
 
 ### NOAA active
 ```python
-SWIMSMART_SOURCE = "ecmwf"
+SWIMSMART_SOURCE = "noaa"
 ```
 NOAA predictions are still generated
 ECMWF predictions are still generated
@@ -110,20 +110,23 @@ pip install -r requirements.txt
 
 ### Default Location
 
+```text
 prediction/pickle/                 # WITH WTMP
 prediction/No WTMP/pickle/         # WITHOUT WTMP
 prediction/ERA5/pickle/            # ERA5 (optional)
-
+```
 
 Defined in `config.py`:
 
+```text
 PICKLE_DIR = "./prediction/pickle"
 PICKLE_DIR_NO_WTMP = "./prediction/No WTMP/pickle"
+```
+
 
 ### Required Files
 
 Each model folder should contain the same five model filenames:
-
 ```text
 WaveHeight.pkl
 WavePeriod.pkl
@@ -133,7 +136,6 @@ WindDirection.pkl
 ```
 
 Locations:
-
 ```text
 prediction/pickle/                  # WITH WTMP models
 prediction/No WTMP/pickle/          # WITHOUT WTMP models
@@ -147,10 +149,10 @@ prediction/ERA5/pickle/             # ERA5 models, if used
 ### Option 1 — Copy Existing Models (Recommended)
 
 Place files into:
-
+```text
 prediction/pickle/                 # WITH WTMP
 prediction/No WTMP/pickle/         # WITHOUT WTMP
-
+```
 
 ---
 
@@ -238,7 +240,7 @@ gcloud scheduler jobs run ecmwf-wtmp-hourly --location=us-central1
 - `ecmwf-hourly`  
   Runs ECMWF prediction without WTMP → updates `predictions_ecmwf`
 
-- `ecmwf-wtmp-hourly`
+- `ecmwf-wtmp-hourly`  
   Runs ECMWF prediction with WTMP → updates `predictions_ecmwf_wtmp`
 
 ---
