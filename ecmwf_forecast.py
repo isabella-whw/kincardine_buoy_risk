@@ -138,11 +138,15 @@ def build_ecmwf_ml_input_row(df: pd.DataFrame) -> tuple[pd.DataFrame, float]:
         "MWD": float(row["wave_direction_deg"]),
         "PRES": float(row["pressure_msl_hPa"]),
         "ATMP": float(row["temperature_2m_C"]),
-        "WTMP": np.nan,
         "DEWP": float(row["dew_point_2m_C"]),
     }])
     ml["WDIRs"] = np.sin(np.deg2rad(ml["WDIR"]))
     ml["WDIRc"] = np.cos(np.deg2rad(ml["WDIR"]))
     ml["MWDs"] = np.sin(np.deg2rad(ml["MWD"]))
     ml["MWDc"] = np.cos(np.deg2rad(ml["MWD"]))
+    return ml, max_wave_height_12h_m
+
+def build_ecmwf_ml_input_row_with_wtmp(df: pd.DataFrame) -> tuple[pd.DataFrame, float]:
+    ml, max_wave_height_12h_m = build_ecmwf_ml_input_row(df)
+    ml["WTMP"] = ml["ATMP"]
     return ml, max_wave_height_12h_m

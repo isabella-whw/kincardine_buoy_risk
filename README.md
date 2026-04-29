@@ -22,14 +22,25 @@ There are two main pipelines:
 - Produces current hazard conditions
 - Writes results to `predictions`
 
-### 2. Backup / Parallel Pipeline (ECMWF)
+
+### 2. Backup / Parallel Pipelines (ECMWF)
+
+Two ECMWF-based pipelines run in parallel:
+
+#### (a) ECMWF (No WTMP)
 - Uses Open-Meteo ECMWF weather and marine APIs
 - Runs hourly
 - Uses the current ECMWF hour as model input
 - Computes hazard conditions using the same hazard model
+- Does NOT include water temperature
 - Writes results to `predictions_ecmwf`
 
-Both pipelines can run at the same time.
+#### (b) ECMWF (With WTMP)
+- Same as above, but includes WTMP as a model input
+- WTMP is approximated using air temperature (no true water temperature available)
+- Writes results to `predictions_ecmwf_wtmp`
+
+All pipelines can run at the same time.
 
 Only one source is sent to SwimSmart at a time, controlled manually by `SWIMSMART_SOURCE` in `config.py`.
 
@@ -39,13 +50,13 @@ Only one source is sent to SwimSmart at a time, controlled manually by `SWIMSMAR
 
 The active SwimSmart source is controlled by:
 
-`SWIMSMART_SOURCE = "noaa"` or `SWIMSMART_SOURCE = "ecmwf"`
+`SWIMSMART_SOURCE = "noaa"` or `SWIMSMART_SOURCE = "ecmwf"` or `SWIMSMART_SOURCE = "ecmwf_wtmp"`
 
 Defined in `config.py`.
 
 ### NOAA active
 ```python
-SWIMSMART_SOURCE = "noaa"
+SWIMSMART_SOURCE = "ecmwf"
 ```
 NOAA predictions are still generated
 ECMWF predictions are still generated
@@ -99,15 +110,19 @@ pip install -r requirements.txt
 
 ### Default Location
 
-prediction/pickle/
+prediction/pickle/                 # WITH WTMP
+prediction/No WTMP/pickle/         # WITHOUT WTMP
+prediction/ERA5/pickle/            # ERA5 (optional)
 
 
 Defined in `config.py`:
 
 PICKLE_DIR = "./prediction/pickle"
-
+PICKLE_DIR_NO_WTMP = "./prediction/No WTMP/pickle"
 
 ### Required Files
+
+Each model folder should contain the same five model filenames:
 
 ```text
 WaveHeight.pkl
@@ -115,6 +130,14 @@ WavePeriod.pkl
 WindSpeed.pkl
 WaveDirection.pkl
 WindDirection.pkl
+```
+
+Locations:
+
+```text
+prediction/pickle/                  # WITH WTMP models
+prediction/No WTMP/pickle/          # WITHOUT WTMP models
+prediction/ERA5/pickle/             # ERA5 models, if used
 ```
 
 ---
@@ -125,7 +148,8 @@ WindDirection.pkl
 
 Place files into:
 
-prediction/pickle/
+prediction/pickle/                 # WITH WTMP
+prediction/No WTMP/pickle/         # WITHOUT WTMP
 
 
 ---
@@ -156,10 +180,13 @@ Model `.pkl` files are not tracked in Git by default.
 
 Add the following to `.gitignore`:
 
-prediction/pickle/
-prediction/ERA5/pickle/
+```text
 *.pkl
 
+!prediction/pickle/.gitkeep
+!prediction/No WTMP/pickle/.gitkeep
+!prediction/ERA5/pickle/.gitkeep
+```
 
 This prevents large model files from being uploaded to GitHub.
 
@@ -198,6 +225,7 @@ This updates the live service.
 ```bash
 gcloud scheduler jobs run kincardine-hourly --location=us-central1
 gcloud scheduler jobs run ecmwf-hourly --location=us-central1
+gcloud scheduler jobs run ecmwf-wtmp-hourly --location=us-central1
 ```
 
 ---
@@ -208,7 +236,10 @@ gcloud scheduler jobs run ecmwf-hourly --location=us-central1
   Runs NOAA real-time prediction → updates `predictions`
 
 - `ecmwf-hourly`  
-  Runs forecast hazard model → updates `predictions_ecmwf`
+  Runs ECMWF prediction without WTMP → updates `predictions_ecmwf`
+
+- `ecmwf-wtmp-hourly`
+  Runs ECMWF prediction with WTMP → updates `predictions_ecmwf_wtmp`
 
 ---
 
@@ -230,6 +261,8 @@ https://console.cloud.google.com/run/detail/us-central1/kincardine-test/logs?pro
 
 Look for:
 - Successful `/run_once` execution
+- Successfulessful `/run_ecmwf_once` execution
+- Successful `/run_ecmwf_wtmp_once` execution
 - No errors
 
 ---
@@ -250,6 +283,11 @@ predictions/{station_id}/history/{timestamp}
 predictions_ecmwf/ecmwf/history/{timestamp}
 
 
+##### predictions_ecmwf_wtmp
+
+predictions_ecmwf_wtmp/ecmwf_wtmp/history/{timestamp}
+
+
 ##### alerts
 
 alerts/{alert_id}
@@ -259,12 +297,15 @@ alerts/{alert_id}
 
 ### Verify Data
 
-Check that:
-- New timestamps appear
-- Fields update:
-  - wave_height_m
-  - total_score
-  - risk_level
+Check that new timestamps appear and fields update:
+- wave_height_m
+- max_wave_height_12h_m
+- wave_factor
+- max_wave_factor
+- period_factor
+- wind_factor
+- total_score
+- risk_level
 
 ---
 
@@ -275,9 +316,13 @@ https://kincardine-test-448213829784.us-central1.run.app/docs
 Run:
 
 POST /run_once
-GET /latest
+GET  /latest
+
 POST /run_ecmwf_once
-GET /latest_ecmwf
+GET  /latest_ecmwf
+
+POST /run_ecmwf_wtmp_once
+GET  /latest_ecmwf_wtmp
 
 
 ---
@@ -286,18 +331,37 @@ GET /latest_ecmwf
 
 1. Modify code or models  
 2. Deploy to Cloud Run  
-3. Make sure both scheduler jobs run:
+3. Run scheduler jobs:
    - `kincardine-hourly`
    - `ecmwf-hourly`
-4. Set `SWIMSMART_SOURCE` manually to choose the active SwimSmart source
-5. Check:
+   - `ecmwf-wtmp-hourly`
+4. Check:
    - Scheduler → success
    - Logs → no errors
    - Firestore → data updated  
-6. Validate results via API  
+5. Validate results via API
+6. Set SWIMSMART_SOURCE manually:
+   - noaa
+   - ecmwf
+   - ecmwf_wtmp
 
 ---
 
+## GitHub Update Workflow
+
+After confirming everything works, update GitHub:
+
+```bash
+git status
+git add .
+git commit -m "your commit message"
+git pull --rebase origin master
+git push
+```
+
+If Git reports no changes, you can skip commit and push.
+
+---
 ## Hazard Model
 
 
@@ -319,6 +383,7 @@ Risk Levels:
 - Directions are converted relative to shoreline (315°)
 - Rolling 12-hour wave height captures sustained conditions
 - Models trained using NOAA and ERA5 datasets
-- NOAA and ECMWF pipelines can run in parallel
+- NOAA, ECMWF (no WTMP), and ECMWF (with WTMP) pipelines run in parallel
 - SwimSmart output is controlled manually using `SWIMSMART_SOURCE`
 - Firestore stores both latest outputs and history
+- Model .pkl files are not tracked by Git and must exist locally

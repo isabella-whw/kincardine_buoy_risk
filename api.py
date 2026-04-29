@@ -6,12 +6,14 @@ from fastapi import FastAPI, HTTPException, Query
 from datetime import datetime, date
 
 from config import STATION_ID_DEFAULT, TORONTO_TZ, logger
-from pipeline import make_prediction, make_ecmwf_prediction
+from pipeline import make_prediction, make_ecmwf_prediction, make_ecmwf_prediction_with_wtmp
 from firestore import (
     write_latest,
     write_latest_ecmwf,
+    write_latest_ecmwf_wtmp,
     read_latest,
     read_latest_ecmwf,
+    read_latest_ecmwf_wtmp,
     date_to_range_strings,
     read_history_range,
 )
@@ -109,4 +111,29 @@ def build_app() -> FastAPI:
                 status_code=500,
                 content={"ok": False, "error": repr(e)},
             )
+
+    @app.get("/latest_ecmwf_wtmp")
+    def latest_ecmwf_wtmp():
+        doc = read_latest_ecmwf_wtmp("ecmwf_wtmp")
+        if not doc:
+            raise HTTPException(status_code=404, detail="No ECMWF WTMP prediction stored yet")
+        return doc
+
+    @app.post("/run_ecmwf_wtmp_once", include_in_schema=False)
+    def run_ecmwf_wtmp_once():
+        try:
+            latest_doc, _ = make_ecmwf_prediction_with_wtmp(app.state.LAST_DOC)
+            write_latest_ecmwf_wtmp(latest_doc)
+            return {
+                "ok": True,
+                "timestamp_utc": latest_doc["timestamp_utc"],
+                "risk_level": latest_doc["risk_level"],
+                "total_score": latest_doc["total_score"],
+            }
+        except Exception as e:
+            logger.exception("run_ecmwf_wtmp_once failed")
+            return JSONResponse(
+                status_code=500,
+                content={"ok": False, "error": repr(e)},
+        )
     return app

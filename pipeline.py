@@ -11,7 +11,10 @@ from config import (
     SWIMSMART_SOURCE,
     STATION_ID_DEFAULT,
     PICKLE_DIR,
+    PICKLE_DIR_NO_WTMP,
     MODEL_FILES,
+    DEFAULT_PREDICTORS,
+    DEFAULT_PREDICTORS_NO_WTMP,
     TORONTO_TZ,
     ONSHORE_DEG,
     ALERT_STALE_MINUTES,
@@ -35,18 +38,23 @@ from noaa import (
 )
 from email_alert import send_email_smtp, should_send_alert
 from swimsmart import send_prediction_to_swimsmart
-from ecmwf_forecast import fetch_ecmwf_forecast_df, build_ecmwf_ml_input_row
+from ecmwf_forecast import fetch_ecmwf_forecast_df, build_ecmwf_ml_input_row, build_ecmwf_ml_input_row_with_wtmp
 
 # Run all trained ML models for a single input row and return predictions.
-def _run_models(feature_row: pd.DataFrame) -> dict[str, float]:
+def _run_models(
+    feature_row: pd.DataFrame,
+    pickle_dir: str,
+    model_files: dict[str, str],
+    default_predictors: list[str],
+) -> dict[str, float]:
     preds: dict[str, float] = {}
-    for out_col, fname in MODEL_FILES.items():
-        path = os.path.join(PICKLE_DIR, fname)
+    for out_col, fname in model_files.items():
+        path = os.path.join(pickle_dir, fname)
         model = load_model(path)
         if isinstance(model, dict) and ("model_sin" in model) and ("model_cos" in model):
             preds[out_col] = predict_from_bundle(model, feature_row)
         else:
-            preds[out_col] = predict_scalar_model(model, feature_row)
+            preds[out_col] = predict_scalar_model(model, feature_row, default_predictors)
         safe_del(model)
     return preds
 
@@ -97,7 +105,8 @@ def _build_doc_from_prediction(
     # Only one source (NOAA or ECMWF) is allowed to send at a time
     active = (
         (SWIMSMART_SOURCE == "noaa" and station_id == STATION_ID_DEFAULT) or
-        (SWIMSMART_SOURCE == "ecmwf" and station_id == "ecmwf")
+        (SWIMSMART_SOURCE == "ecmwf" and station_id == "ecmwf") or
+        (SWIMSMART_SOURCE == "ecmwf_wtmp" and station_id == "ecmwf_wtmp")
     )
     doc["swimsmart_active_source"] = SWIMSMART_SOURCE
     doc["sent_to_swimsmart"] = active
@@ -118,11 +127,34 @@ def _build_doc_from_prediction(
 def make_ecmwf_prediction(last_doc_mem: dict | None) -> tuple[dict, dict | None]:
     df_ecmwf = fetch_ecmwf_forecast_df()
     feature_row, max_wave_height_12h_m = build_ecmwf_ml_input_row(df_ecmwf)
-    preds = _run_models(feature_row)
+    preds = _run_models(
+        feature_row,
+        PICKLE_DIR_NO_WTMP,
+        MODEL_FILES,
+        DEFAULT_PREDICTORS_NO_WTMP,
+    )
     timestamp_utc = feature_row.loc[0, "datetime"]
     doc = _build_doc_from_prediction(
         timestamp_utc,
         "ecmwf",
+        preds,
+        max_wave_height_12h_m,
+    )
+    return doc, last_doc_mem
+
+def make_ecmwf_prediction_with_wtmp(last_doc_mem: dict | None) -> tuple[dict, dict | None]:
+    df_ecmwf = fetch_ecmwf_forecast_df()
+    feature_row, max_wave_height_12h_m = build_ecmwf_ml_input_row_with_wtmp(df_ecmwf)
+    preds = _run_models(
+        feature_row,
+        PICKLE_DIR,
+        MODEL_FILES,
+        DEFAULT_PREDICTORS,
+    )
+    timestamp_utc = feature_row.loc[0, "datetime"]
+    doc = _build_doc_from_prediction(
+        timestamp_utc,
+        "ecmwf_wtmp",
         preds,
         max_wave_height_12h_m,
     )
@@ -157,7 +189,12 @@ def make_prediction(station_id: str, last_doc_mem: dict | None) -> tuple[dict, d
     latest_row = add_month_hour_decimal(latest_row)
     latest_row = ensure_dir_sin_cos(latest_row, "WDIR", "WDIRs", "WDIRc")
     latest_row = ensure_dir_sin_cos(latest_row, "MWD", "MWDs", "MWDc")
-    preds = _run_models(latest_row)
+    preds = _run_models(
+        latest_row,
+        PICKLE_DIR,
+        MODEL_FILES,
+        DEFAULT_PREDICTORS,
+    )
     doc = _build_doc_from_prediction(
         latest_row.loc[0, "datetime"],
         station_id,

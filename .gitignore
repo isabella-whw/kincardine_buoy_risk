@@ -2,12 +2,13 @@
 __pycache__/
 *.pyc
 
-# Model files
-prediction/pickle/
-prediction/ERA5/pickle/
-prediction/No WTMP/pickle/
+# Ignore all model files
 *.pkl
 
+# Keep folder structure
+!prediction/pickle/.gitkeep
+!prediction/No WTMP/pickle/.gitkeep
+!prediction/ERA5/pickle/.gitkeep
 
 # Environment files
 .env

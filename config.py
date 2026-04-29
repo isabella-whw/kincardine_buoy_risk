@@ -28,6 +28,7 @@ LOCAL_TZ = "America/Toronto"
 
 # Directory containing trained ML model pickle files
 PICKLE_DIR = os.path.join(".", "prediction", "pickle")
+PICKLE_DIR_NO_WTMP = os.path.join(".", "prediction", "No WTMP", "pickle")
 
 # Toggle Firestore usage
 USE_FIRESTORE = True
@@ -52,9 +53,13 @@ DEFAULT_PREDICTORS = [
     "hour_decimal", "WDIRs", "WDIRc", "WSPD", "GST", "WVHT", "DPD",
     "APD", "MWDs", "MWDc", "PRES", "ATMP", "WTMP", "DEWP"
 ]
+DEFAULT_PREDICTORS_NO_WTMP = [
+    "hour_decimal", "WDIRs", "WDIRc", "WSPD", "GST", "WVHT", "DPD",
+    "APD", "MWDs", "MWDc", "PRES", "ATMP", "DEWP"
+]
 
 # Email recipient and sender
-ALERT_EMAIL_TO = "ca6478680191@gmail.com"
+ALERT_EMAIL_TO = "a229smith@uwaterloo.ca, ca6478680191@gmail.com"
 ALERT_EMAIL_FROM = "kincardine.alerts@gmail.com"
 
 # SMTP relay configuration for sending alert emails
