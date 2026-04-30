@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 logger = logging.getLogger("uvicorn.error")
 
 # Active SwimSmart source: "noaa" or "ecmwf"
-SWIMSMART_SOURCE = os.getenv("SWIMSMART_SOURCE", "ecmwf")
+SWIMSMART_SOURCE = os.getenv("SWIMSMART_SOURCE", "noaa")
 
 # Default NOAA buoy station ID
 STATION_ID_DEFAULT = "41049"
